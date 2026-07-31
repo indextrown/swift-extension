@@ -1,0 +1,42 @@
+[
+  {
+    "name": "✨ feature",
+    "color": "a2eeef",
+    "description": "새로운 자료구조 또는 API 기능"
+  },
+  {
+    "name": "🔧 fix",
+    "color": "d73a4a",
+    "description": "잘못된 동작이나 버그 수정"
+  },
+  {
+    "name": "🔥 hotfix",
+    "color": "b60205",
+    "description": "긴급하게 처리해야 하는 치명적 문제"
+  },
+  {
+    "name": "⚡ performance",
+    "color": "f9d71c",
+    "description": "성능, 메모리 또는 벤치마크 개선"
+  },
+  {
+    "name": "⚙️ chore",
+    "color": "D4C5F9",
+    "description": "기타 프로젝트 유지보수"
+  },
+  {
+    "name": "🔨 refactor",
+    "color": "C5DEF5",
+    "description": "동작을 유지하는 구조 개선"
+  },
+  {
+    "name": "✅ test",
+    "color": "ccffc4",
+    "description": "테스트 코드 작성 및 개선"
+  },
+  {
+    "name": "📃 docs",
+    "color": "1D76DB",
+    "description": "README와 API 문서 작성 및 수정"
+  }
+]

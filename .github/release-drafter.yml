@@ -1,0 +1,45 @@
+# 병합된 PR의 라벨을 기준으로 릴리즈 노트를 분류합니다.
+
+name-template: '$RESOLVED_VERSION'
+tag-template: '$RESOLVED_VERSION'
+
+categories:
+  - title: '✨ 새로운 자료구조와 기능'
+    semver-increment: minor
+    when:
+      label: '✨ feature'
+  - title: '⚡ 성능과 메모리를 개선했어요'
+    semver-increment: patch
+    when:
+      label: '⚡ performance'
+  - title: '🐞 버그를 수정했어요'
+    semver-increment: patch
+    when:
+      labels:
+        - '🔧 fix'
+        - '🔥 hotfix'
+  - title: '🛠 코드를 개선했어요'
+    semver-increment: patch
+    when:
+      labels:
+        - '⚙️ chore'
+        - '🔨 refactor'
+        - '✅ test'
+  - title: '📚 문서를 개선했어요'
+    semver-increment: patch
+    when:
+      label: '📃 docs'
+  - title: '기타 변경'
+    semver-increment: patch
+
+change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
+change-title-escapes: '\\<*_&'
+sort-by: merged_at
+sort-direction: descending
+
+template: |
+  ## 이번 버전의 변경사항
+
+  $CHANGES
+
+no-changes-template: '변경사항이 없어요.'
