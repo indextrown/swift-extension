@@ -1,8 +1,37 @@
+# macOS
 .DS_Store
-/.build
-/Packages
-xcuserdata/
+.AppleDouble
+.LSOverride
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+
+# Xcode
 DerivedData/
-.swiftpm/configuration/registries.json
-.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build and archive artifacts
+*.dSYM
+*.dSYM.zip
+*.ipa
+*.app
+
+# Dependency build directories
+Carthage/Build/
+Pods/
+
+# Editors and local tooling
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local credentials and environment files
 .netrc
+.env
+.env.*
+!.env.example
