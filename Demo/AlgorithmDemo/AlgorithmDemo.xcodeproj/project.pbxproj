@@ -1,0 +1,236 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4B0000000000000000000001 /* Algorithm in Frameworks */ = {isa = PBXBuildFile; productRef = 4B0000000000000000000002 /* Algorithm */; };
+		4B0000000000000000000003 /* AlgorithmDemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B0000000000000000000004 /* AlgorithmDemoApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		4B0000000000000000000004 /* AlgorithmDemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlgorithmDemoApp.swift; sourceTree = "<group>"; };
+		4B0000000000000000000005 /* AlgorithmDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlgorithmDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4B0000000000000000000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B0000000000000000000001 /* Algorithm in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4B0000000000000000000007 = {
+			isa = PBXGroup;
+			children = (
+				4B0000000000000000000008 /* AlgorithmDemo */,
+				4B0000000000000000000009 /* Frameworks */,
+				4B000000000000000000000A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4B0000000000000000000008 /* AlgorithmDemo */ = {
+			isa = PBXGroup;
+			children = (
+				4B0000000000000000000004 /* AlgorithmDemoApp.swift */,
+			);
+			path = AlgorithmDemo;
+			sourceTree = "<group>";
+		};
+		4B0000000000000000000009 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		4B000000000000000000000A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4B0000000000000000000005 /* AlgorithmDemo.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4B000000000000000000000B /* AlgorithmDemo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4B000000000000000000000C /* Build configuration list for PBXNativeTarget \"AlgorithmDemo\" */;
+			buildPhases = (
+				4B000000000000000000000D /* Sources */,
+				4B0000000000000000000006 /* Frameworks */,
+				4B000000000000000000000E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AlgorithmDemo;
+			packageProductDependencies = (
+				4B0000000000000000000002 /* Algorithm */,
+			);
+			productName = AlgorithmDemo;
+			productReference = 4B0000000000000000000005 /* AlgorithmDemo.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4B000000000000000000000F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					4B000000000000000000000B = {
+						CreatedOnToolsVersion = 26.4;
+					};
+				};
+			};
+			buildConfigurationList = 4B0000000000000000000010 /* Build configuration list for PBXProject \"AlgorithmDemo\" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4B0000000000000000000007;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4B0000000000000000000011 /* XCLocalSwiftPackageReference \"../..\" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4B000000000000000000000A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4B000000000000000000000B /* AlgorithmDemo */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4B000000000000000000000E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4B000000000000000000000D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B0000000000000000000003 /* AlgorithmDemoApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		4B0000000000000000000012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		4B0000000000000000000013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		4B0000000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.indextrown.AlgorithmDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		4B0000000000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.indextrown.AlgorithmDemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4B0000000000000000000010 /* Build configuration list for PBXProject \"AlgorithmDemo\" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B0000000000000000000012 /* Debug */,
+				4B0000000000000000000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4B000000000000000000000C /* Build configuration list for PBXNativeTarget \"AlgorithmDemo\" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B0000000000000000000014 /* Debug */,
+				4B0000000000000000000015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4B0000000000000000000011 /* XCLocalSwiftPackageReference \"../..\" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4B0000000000000000000002 /* Algorithm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4B0000000000000000000011 /* XCLocalSwiftPackageReference \"../..\" */;
+			productName = Algorithm;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4B000000000000000000000F /* Project object */;
+}

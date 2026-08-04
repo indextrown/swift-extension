@@ -12,12 +12,33 @@ let package = Package(
     ],
     products: [
         .library(
+            name: "Algorithm",
+            targets: ["Algorithm"]
+        ),
+        .library(
+            name: "Labs",
+            targets: ["Labs"]
+        ),
+        .library(
             name: "SwiftExtension",
             targets: ["SwiftExtension"]
         ),
     ],
     targets: [
+        .target(name: "Algorithm"),
+        .target(
+            name: "Labs",
+            exclude: ["Stack"]
+        ),
         .target(name: "SwiftExtension"),
+        .testTarget(
+            name: "AlgorithmTests",
+            dependencies: ["Algorithm"]
+        ),
+        .testTarget(
+            name: "LabsTests",
+            dependencies: ["Labs"]
+        ),
         .testTarget(
             name: "SwiftExtensionTests",
             dependencies: ["SwiftExtension"]
