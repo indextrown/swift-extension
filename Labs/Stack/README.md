@@ -1,12 +1,10 @@
 # Stack Lab
 
-`Stack`은 `Labs` Swift Package 모듈에서 제공한다.
+`Stack`은 현재 Playground 안에서만 사용하는 실험용 구현이다. 기본 접근 제어인 `internal`을 유지하므로 `Labs` Swift Package 모듈의 공개 API로 노출되지 않는다.
 
 ```swift
-import Labs
-
 var stack = Stack(array: ["A", "B"])
 stack.push("C")
 ```
 
-Playground를 실행할 때는 `Labs` product를 의존성으로 추가해야 한다.
+`Labs` product에는 추후 외부에 제공할 구현만 추가한다.
