@@ -26,7 +26,10 @@ let package = Package(
     ],
     targets: [
         .target(name: "Algorithm"),
-        .target(name: "Labs"),
+        .target(
+            name: "Labs",
+            exclude: ["Stack"]
+        ),
         .target(name: "SwiftExtension"),
         .testTarget(
             name: "AlgorithmTests",
