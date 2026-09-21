@@ -88,7 +88,7 @@ extension Stack: Sendable where Element: Sendable {}
 
 ## 동시성과 Sendable
 
-- 패키지는 Swift 6 언어 모드로 빌드해요. 공개 타입은 동시성 검사를 통과해야 해요.
+- 패키지는 tools-version 5.9를 쓰므로 Swift 5 언어 모드로 빌드해요. 컴파일러가 동시성 위반을 오류로 막아 주지는 않지만, 아래 규칙은 그대로 지켜요. 나중에 Swift 6 언어 모드로 올릴 때 드러날 문제를 미리 줄여요.
 - 값 타입 자료구조는 요소가 `Sendable`일 때 함께 `Sendable`이 되도록 조건부 준수를 적어요.
 - 코어 모듈에는 `@MainActor`를 붙이지 않아요. 액터 격리가 필요한 코드는 UI 타깃에 둬요.
 - 내부에 참조 타입 저장소를 쓰면서 `@unchecked Sendable`을 붙일 때는, 안전한 이유를 주석으로 적어요. 이유를 적을 수 없으면 붙이지 않아요.

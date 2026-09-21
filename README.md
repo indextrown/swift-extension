@@ -23,9 +23,9 @@ servers and command line tools as well as Apple platforms.
 
 ## Requirements
 
-- Swift 6.3 or later (the package builds in Swift 6 language mode)
+- Swift 5.9 or later to build the package (`swift-tools-version: 5.9`)
+- Swift 6.0 or later (Xcode 16+) to run the tests, which use Swift Testing
 - iOS 15+, macOS 12+, tvOS 15+, watchOS 8+
-- Xcode 26.4 or later for Apple-platform development
 
 ## Installation
 

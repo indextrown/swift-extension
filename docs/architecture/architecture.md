@@ -45,8 +45,8 @@
 
 | 항목 | 값 |
 | --- | --- |
-| swift-tools-version | 6.3 |
-| 언어 모드 | `swiftLanguageModes: [.v6]` |
+| swift-tools-version | 5.9 |
+| 언어 모드 | Swift 5 (tools-version 기본값) |
 | 지원 플랫폼 | iOS 15, macOS 12, tvOS 15, watchOS 8 |
 
 `Demo/AlgorithmDemo/`는 루트 패키지를 로컬 의존성으로 참조하는 macOS SwiftUI 데모 앱이에요. 라이브러리 타깃은 데모 앱을 참조하지 않아요.
