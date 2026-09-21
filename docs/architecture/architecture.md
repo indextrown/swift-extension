@@ -31,9 +31,13 @@
 | `Algorithm` | `Algorithm` | `Sources/Algorithm/` | 자료구조와 알고리즘 구현을 담아요. 지금은 `Stack`이 있어요. |
 | `Labs` | `Labs` | `Sources/Labs/` | 아직 공개 API로 확정하지 않은 실험 구현과 Playground를 담아요. |
 | `SwiftExtension` | `SwiftExtension` | `Sources/SwiftExtension/` | 패키지 수준 정보(`SwiftExtension.version`)를 담는 진입 모듈이에요. |
+| `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰와 확장을 담아요. 아직 공개 선언이 없어요. |
+| `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰와 `ViewModifier`를 담아요. 아직 공개 선언이 없어요. |
 | — | `AlgorithmTests` | `Tests/AlgorithmTests/` | `Algorithm` 테스트 |
 | — | `LabsTests` | `Tests/LabsTests/` | `Labs` 테스트 |
 | — | `SwiftExtensionTests` | `Tests/SwiftExtensionTests/` | `SwiftExtension` 테스트 |
+| — | `UIKitExtensionTests` | `Tests/UIKitExtensionTests/` | `UIKitExtension` 테스트 |
+| — | `SwiftUIExtensionTests` | `Tests/SwiftUIExtensionTests/` | `SwiftUIExtension` 테스트 |
 
 `Labs` 타깃은 `exclude: ["Stack"]`로 Playground 디렉터리를 빌드에서 제외해요. Playground를 새로 추가하면 `Package.swift`의 `exclude`도 함께 갱신해요.
 
@@ -59,8 +63,8 @@
 
 ```text
                  ┌─────────────────────┐
-                 │  UIKitExtension     │  (계획)
-                 │  SwiftUIExtension   │  (계획)
+                 │  UIKitExtension     │
+                 │  SwiftUIExtension   │
                  └──────────┬──────────┘
                             │ 단방향
                             ▼
@@ -74,13 +78,13 @@
                       └───────────┘
 ```
 
-- UI 타깃은 코어 모듈에 의존할 수 있어요. 코어 모듈이 UI 타깃에 의존하지 않아요.
+- UI 타깃은 코어 모듈에 의존할 수 있어요. 코어 모듈이 UI 타깃에 의존하지 않아요. 지금은 두 UI 타깃 모두 의존성이 없어요. 코어 타입이 필요해지면 그때 `dependencies`에 추가해요.
 - `Labs`는 어떤 타깃도 의존하지 않아요. 실험이 끝나면 코드를 코어 모듈로 옮겨요.
 - 순환 의존이 필요해 보이면 타입의 위치나 책임을 잘못 나눈 신호예요. 공통 부분을 아래 계층으로 내려요.
 
-## 계획 중인 UI 타깃
+## UI 타깃
 
-UIKit·SwiftUI 재사용 뷰는 별도 타깃으로 나눠요. 이름은 `UIKitExtension`, `SwiftUIExtension`으로 정했어요. 설계 규칙과 추가 절차는 [UI 모듈 가이드](ui-modules.md)에 있어요.
+UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃으로 나눠 담아요. product도 각각 분리해서, SwiftUI만 쓰는 앱이 UIKit 쪽 코드를 링크하지 않게 해요. 설계 규칙은 [UI 모듈 가이드](ui-modules.md)에 있어요.
 
 ## 새 자료구조를 추가하는 흐름
 
