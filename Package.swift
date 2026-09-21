@@ -23,6 +23,14 @@ let package = Package(
             name: "SwiftExtension",
             targets: ["SwiftExtension"]
         ),
+        .library(
+            name: "UIKitExtension",
+            targets: ["UIKitExtension"]
+        ),
+        .library(
+            name: "SwiftUIExtension",
+            targets: ["SwiftUIExtension"]
+        ),
     ],
     targets: [
         .target(name: "Algorithm"),
@@ -31,6 +39,8 @@ let package = Package(
             exclude: ["Stack"]
         ),
         .target(name: "SwiftExtension"),
+        .target(name: "UIKitExtension"),
+        .target(name: "SwiftUIExtension"),
         .testTarget(
             name: "AlgorithmTests",
             dependencies: ["Algorithm"]
@@ -42,6 +52,14 @@ let package = Package(
         .testTarget(
             name: "SwiftExtensionTests",
             dependencies: ["SwiftExtension"]
+        ),
+        .testTarget(
+            name: "UIKitExtensionTests",
+            dependencies: ["UIKitExtension"]
+        ),
+        .testTarget(
+            name: "SwiftUIExtensionTests",
+            dependencies: ["SwiftUIExtension"]
         ),
     ],
     swiftLanguageModes: [.v6]
