@@ -1,0 +1,18 @@
+{
+  "kit": "ios-uikit",
+  "files": {
+    "AGENTS.md": "9fdcabbd9954a60559403a0b1fad0cbe3f37d910e7b676d40a3ba1d51faffed5",
+    "CLAUDE.md": "781e7de8a1e578a4a1593808f13b9359a42e2c836685db71156f27444dc333d8",
+    "docs/architecture/architecture.md": "6548f0847037186e9f579291778d6e807a17808c5dc74853991745fc63cf727c",
+    "docs/architecture/dicontainer.md": "cd646e4124cfb18628c735dcaa5dfff624eb8bd20d40f8b96622c1a25da67bf6",
+    "docs/architecture/rxswift-binding-policy.md": "49af79a5309f662ea80b44051f49685b36730c1760c44fea8c2047246c742e7d",
+    "docs/architecture/rxswift-input-output.md": "60b5d8c94df6160ebded11911031c9d91a84f4f21fcec4c728145b10d7b8d118",
+    "docs/architecture/rxswift.md": "81fcdf4b41b1c211cf4478b6722ef4cdf136071aebe1506c38c7b7287ff2e0d3",
+    "docs/architecture/view-viewmodel-protocols.md": "19a772bf19dd0c23c5fe9b8a0c5a9ea4903839f598b45916fd40300fa63acbf2",
+    "docs/development/ai-attribution.md": "22c523fe89e54a2eacca7f08b5d92ddd5cc3bbc2cc825024acc4471cfd8365e5",
+    "docs/development/gitflow.md": "c52d56f910bc939b08d3410460e788771b60722b21c1af439e7c3771b12cf89f",
+    "docs/development/korean-editing.md": "257e5e1b78e35d90c93c8f5eb36295f6a22fee4f9153fca00b68da82c919b8eb",
+    "docs/development/swiftstyle.md": "88009eb8f51d04d7b8d5788ca589740ae667b36e4af70ec137f2b0075461a06a",
+    "docs/development/testing.md": "ee0b568a2b7b5bea50d5b7afccf32244e0d82fc3d3ead875d6d5f363e8c16510"
+  }
+}
