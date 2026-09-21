@@ -20,7 +20,7 @@
 | 테스트 타깃 | `AlgorithmTests`, `LabsTests`, `SwiftExtensionTests` |
 | 테스트 프레임워크 | Swift Testing (`import Testing`, `@Test`, `#expect`) |
 | 실행 환경 | macOS에서 `swift test`로 실행해요. 시뮬레이터가 필요하지 않아요. |
-| CI 검증 | `확인 필요`. `.github/workflows/`에는 릴리즈 워크플로만 있고 테스트 워크플로는 아직 없어요. |
+| CI 검증 | `main` 푸시와 모든 PR에서 `Build`·`Test` 워크플로가 macOS 러너로 돌아요. |
 
 각 테스트 타깃은 대응하는 product 하나에만 의존해요. 테스트에서 다른 모듈을 import해야 한다면 모듈 경계를 다시 확인해요.
 
@@ -42,6 +42,17 @@ swift build -c release
 ```
 
 Xcode에서 확인하려면 `Package.swift`를 열고 `⌘U`로 실행해요. 데모 앱은 `Demo/AlgorithmDemo/README.md`의 `xcodebuild` 명령을 따라요.
+
+## CI에서 도는 검증
+
+`.github/workflows/`에 두 워크플로가 있어요. 둘 다 `main` 푸시, 모든 PR, 수동 실행(`workflow_dispatch`)에서 돌아요.
+
+| 워크플로 | 파일 | 하는 일 |
+| --- | --- | --- |
+| `Build` | `.github/workflows/build.yml` | `swift build`를 Debug와 Release 두 구성으로 각각 실행해요. |
+| `Test` | `.github/workflows/test.yml` | `swift test`를 실행해요. |
+
+같은 브랜치에 새 커밋을 올리면 이전 실행은 취소돼요(`cancel-in-progress`). 로컬에서 먼저 확인하고 올리는 순서를 지켜요. CI가 실패하면 로컬에서 같은 명령을 돌려 재현한 뒤 고쳐요.
 
 ## 테스트 작성 방법
 

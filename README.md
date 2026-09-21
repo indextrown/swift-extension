@@ -81,6 +81,9 @@ swift test             # run all tests
 swift test -c release  # run tests with optimizations enabled
 ```
 
+Every push to `main` and every pull request runs two workflows on a macOS
+runner: `Build` (debug and release) and `Test`.
+
 Repository layout:
 
 ```text

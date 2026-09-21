@@ -1,0 +1,37 @@
+# main 브랜치 푸시와 모든 PR에서 테스트를 실행합니다.
+#
+# 테스트는 Swift Testing으로 작성해서 Swift 6.0 이상 툴체인이 필요합니다.
+# 패키지 자체는 swift-tools-version 5.9로 빌드합니다.
+
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Run tests
+        run: swift test
