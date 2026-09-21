@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 5.9
 
 import PackageDescription
 
@@ -23,6 +23,14 @@ let package = Package(
             name: "SwiftExtension",
             targets: ["SwiftExtension"]
         ),
+        .library(
+            name: "UIKitExtension",
+            targets: ["UIKitExtension"]
+        ),
+        .library(
+            name: "SwiftUIExtension",
+            targets: ["SwiftUIExtension"]
+        ),
     ],
     targets: [
         .target(name: "Algorithm"),
@@ -31,6 +39,8 @@ let package = Package(
             exclude: ["Stack"]
         ),
         .target(name: "SwiftExtension"),
+        .target(name: "UIKitExtension"),
+        .target(name: "SwiftUIExtension"),
         .testTarget(
             name: "AlgorithmTests",
             dependencies: ["Algorithm"]
@@ -43,6 +53,13 @@ let package = Package(
             name: "SwiftExtensionTests",
             dependencies: ["SwiftExtension"]
         ),
-    ],
-    swiftLanguageModes: [.v6]
+        .testTarget(
+            name: "UIKitExtensionTests",
+            dependencies: ["UIKitExtension"]
+        ),
+        .testTarget(
+            name: "SwiftUIExtensionTests",
+            dependencies: ["SwiftUIExtension"]
+        ),
+    ]
 )

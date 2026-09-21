@@ -15,17 +15,17 @@ components live in their own targets so clients only link what they use.
 | `Algorithm` | Available | Data structures and algorithms. Currently `Stack`. |
 | `Labs` | Available | Experimental implementations and playgrounds. Not part of the public API surface yet. |
 | `SwiftExtension` | Available | Package-level entry point. Exposes `SwiftExtension.version`. |
-| `UIKitExtension` | Planned | Reusable UIKit views and `UIView` / `UIViewController` extensions. |
-| `SwiftUIExtension` | Planned | Reusable SwiftUI views, `View` extensions, and view modifiers. |
+| `UIKitExtension` | Available | Reusable UIKit views and `UIView` / `UIViewController` extensions. No public declarations yet. |
+| `SwiftUIExtension` | Available | Reusable SwiftUI views, `View` extensions, and view modifiers. No public declarations yet. |
 
 Core modules never import UIKit, SwiftUI, or AppKit, so they can be used on
 servers and command line tools as well as Apple platforms.
 
 ## Requirements
 
-- Swift 6.3 or later (the package builds in Swift 6 language mode)
+- Swift 5.9 or later to build the package (`swift-tools-version: 5.9`)
+- Swift 6.0 or later (Xcode 16+) to run the tests, which use Swift Testing
 - iOS 15+, macOS 12+, tvOS 15+, watchOS 8+
-- Xcode 26.4 or later for Apple-platform development
 
 ## Installation
 
@@ -85,12 +85,14 @@ Repository layout:
 
 ```text
 Sources/
-├── Algorithm/       data structures and algorithms
-├── Labs/            experimental code and playgrounds
-└── SwiftExtension/  package entry point
-Tests/               one test target per product
-Demo/                sample apps that depend on the local package
-docs/                architecture and development guides (Korean)
+├── Algorithm/         data structures and algorithms
+├── Labs/              experimental code and playgrounds
+├── SwiftExtension/    package entry point
+├── UIKitExtension/    reusable UIKit components
+└── SwiftUIExtension/  reusable SwiftUI components
+Tests/                 one test target per product
+Demo/                  sample apps that depend on the local package
+docs/                  architecture and development guides (Korean)
 ```
 
 ## Documentation
@@ -100,7 +102,7 @@ Development guides are written in Korean.
 - [패키지 구조](docs/architecture/architecture.md) — targets, module boundaries, dependency direction
 - [API 설계 규칙](docs/architecture/api-design.md) — public API naming, access control, compatibility
 - [성능 기준](docs/architecture/performance.md) — value semantics, allocation, measurement
-- [UI 모듈 가이드](docs/architecture/ui-modules.md) — rules for the planned UIKit and SwiftUI targets
+- [UI 모듈 가이드](docs/architecture/ui-modules.md) — rules for the UIKit and SwiftUI targets
 - [Swift 스타일](docs/development/swiftstyle.md) — formatting and naming
 - [테스트](docs/development/testing.md) — test targets and commands
 - [Git 작업 흐름](docs/development/gitflow.md) — branches, commits, pull requests

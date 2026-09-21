@@ -1,6 +1,6 @@
 # swift-extension UI 모듈 가이드
 
-> UIKit·SwiftUI 재사용 뷰를 담을 타깃의 설계 규칙이에요. **타깃은 아직 만들지 않았어요.** 이 문서는 추가할 때 지킬 기준을 미리 정해둔 것이고, 실제로 추가하면 `확인 필요` 항목을 실제 값으로 바꿔요.
+> UIKit·SwiftUI 재사용 뷰 타깃의 설계 규칙이에요. 두 타깃은 만들어 뒀고 아직 공개 선언이 없어요. 컴포넌트를 추가할 때 이 규칙을 따라요.
 
 ## 목차
 
@@ -13,16 +13,16 @@
 - [확인하는 방법](#확인하는-방법)
 - [타깃을 추가할 때](#타깃을-추가할-때)
 
-## 타깃 구성 계획
+## 타깃 구성
 
 | Product | Target | 경로 | 담을 내용 |
 | --- | --- | --- | --- |
 | `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰, `UIView`·`UIViewController` 확장 |
 | `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰, `View` 확장, `ViewModifier` |
 
-- 두 타깃을 나누는 이유는 쓰는 쪽이 필요한 프레임워크만 가져가게 하기 위해서예요. SwiftUI만 쓰는 앱이 UIKit 심볼을 링크할 이유가 없어요.
+- product를 각각 따로 두었어요. 쓰는 쪽이 필요한 product만 의존성에 추가하면 다른 쪽은 빌드도 링크도 되지 않아요. SwiftUI만 쓰는 앱이 UIKit 심볼을 링크할 이유가 없어요.
 - 같은 컴포넌트를 두 프레임워크로 제공할 때는 표시 로직을 각 타깃에 각각 두고, 계산·상태 규칙처럼 UI와 무관한 부분만 코어 모듈로 내려요.
-- `확인 필요`: 두 타깃의 최소 배포 타깃. 현재 패키지 전체 설정은 iOS 15, macOS 12, tvOS 15, watchOS 8이에요. UI 타깃에 더 높은 버전이 필요하면 `platforms` 대신 API별 `@available`로 처리할지 먼저 정해요.
+- 최소 배포 타깃은 패키지 전체 설정(iOS 15, macOS 12, tvOS 15, watchOS 8)을 그대로 따라요. 더 높은 버전이 필요한 API에는 `platforms`를 올리지 말고 선언별로 `@available`을 붙여요.
 
 ## 의존성 규칙
 
@@ -90,22 +90,17 @@ public struct BadgeStyle {
 
 - 두 UI 타깃도 `swift build`와 `swift test`로 컴파일을 확인해요. 시뮬레이터가 필요한 검증은 `Demo/`의 데모 앱에서 해요.
 - 표시 결과는 스크린샷이나 프리뷰로 확인하고, 확인한 플랫폼과 OS 버전을 PR에 적어요.
-- `확인 필요`: iOS 시뮬레이터 빌드를 CI에서 돌릴지 여부. 현재 `.github/workflows/`에는 릴리즈 워크플로만 있어요.
+- `확인 필요`: iOS 시뮬레이터 빌드를 CI에서 돌릴지 여부. 현재 `.github/workflows/`에는 릴리즈 워크플로만 있어요. macOS에서 `swift test`만 돌리면 `#if canImport(UIKit)`로 감싼 코드는 컴파일되지 않으니, UIKit 컴포넌트가 늘어나면 시뮬레이터 빌드를 검토해요.
 
-## 타깃을 추가할 때
+## 컴포넌트를 추가할 때
 
-1. `Package.swift`에 product와 target을 추가해요.
+1. 어느 타깃에 넣을지 정해요. UIKit 뷰는 `UIKitExtension`, SwiftUI 뷰는 `SwiftUIExtension`이에요. 둘 다 필요하면 각각 구현하고 공통 계산 로직만 코어 모듈로 내려요.
+2. `Sources/<타깃>/<컴포넌트>/` 디렉터리를 만들고 타입 하나당 파일 하나로 나눠요.
+3. UIKit 코드는 `#if canImport(UIKit) && !os(watchOS)`로 감싸요.
+4. 코어 모듈의 타입이 필요하면 `Package.swift`의 해당 타깃 `dependencies`에 추가해요. 지금은 두 UI 타깃 모두 의존성이 없어요.
+5. 대응하는 테스트 타깃에 테스트를 추가해요.
 
-```swift
-.library(name: "UIKitExtension", targets: ["UIKitExtension"]),
-.target(name: "UIKitExtension"),
-.testTarget(name: "UIKitExtensionTests", dependencies: ["UIKitExtension"]),
-```
-
-2. `Sources/UIKitExtension/`에 모듈 경계를 설명하는 파일을 하나 만들어요. 기존 `Sources/Algorithm/Algorithm.swift`와 같은 역할이에요.
-3. 테스트 타깃을 같이 만들어요. 뷰 로직이 없더라도 import 가능 여부를 확인하는 테스트부터 둬요.
-4. [패키지 구조](architecture.md)의 타깃 표와 이 문서의 `확인 필요` 항목을 실제 값으로 갱신해요.
-5. `README.md`의 모듈 목록도 함께 갱신해요.
+새 타깃 자체를 더 만들 일이 생기면 `Package.swift`에 product·target·testTarget 세 곳을 함께 추가하고, [패키지 구조](architecture.md)의 타깃 표와 `README.md`의 모듈 목록도 갱신해요.
 
 ## 관련 문서
 
