@@ -90,7 +90,8 @@ public struct BadgeStyle {
 
 - 두 UI 타깃도 `swift build`와 `swift test`로 컴파일을 확인해요. 시뮬레이터가 필요한 검증은 `Demo/`의 데모 앱에서 해요.
 - 표시 결과는 스크린샷이나 프리뷰로 확인하고, 확인한 플랫폼과 OS 버전을 PR에 적어요.
-- `확인 필요`: iOS 시뮬레이터 빌드를 CI에서 돌릴지 여부. 현재 `.github/workflows/`에는 릴리즈 워크플로만 있어요. macOS에서 `swift test`만 돌리면 `#if canImport(UIKit)`로 감싼 코드는 컴파일되지 않으니, UIKit 컴포넌트가 늘어나면 시뮬레이터 빌드를 검토해요.
+- CI의 `Build`·`Test` 워크플로는 macOS 러너에서 `swift build`와 `swift test`를 돌려요. macOS에는 UIKit이 없어서 `#if canImport(UIKit)`로 감싼 코드는 **CI에서도 컴파일되지 않아요.**
+- `확인 필요`: iOS 시뮬레이터 빌드를 CI에 추가할지 여부. UIKit 컴포넌트가 들어가는 시점에 정해요. `xcodebuild -scheme UIKitExtension -destination 'platform=iOS Simulator,...'` 형태가 필요해요.
 
 ## 컴포넌트를 추가할 때
 
