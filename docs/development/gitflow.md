@@ -12,8 +12,8 @@
 | 원격 이름 | `origin` (`https://github.com/indextrown/swift-extension.git`) | `git remote -v` |
 | 이슈 사용 여부 | 이슈를 만들지 않아요. 작업은 브랜치와 PR로만 관리해요. | 이 문서 |
 | 작업 브랜치 이름 | `<유형>/<주제>` 예: `feature/ring-buffer` | 기존 브랜치, `.github/labels.json` |
-| 커밋 메시지 형식 | `유형: 변경 내용` 예: `feat: RingBuffer를 추가한다` | 최근 커밋 `git log` |
-| PR 제목 형식 | `[유형] 변경 내용` 예: `[feature] RingBuffer 추가` | `.github/PULL_REQUEST_TEMPLATE.md` |
+| 커밋 메시지 형식 | `유형: 변경 내용` (개조식) 예: `feat: RingBuffer 추가` | 최근 커밋 `git log` |
+| PR 제목 형식 | `[유형] 변경 내용` (해요체) 예: `[feature] RingBuffer를 추가했어요` | `.github/PULL_REQUEST_TEMPLATE.md` |
 | PR 본문 형식 | 저장소 PR 템플릿의 섹션을 유지해요. | `.github/PULL_REQUEST_TEMPLATE.md` |
 | 라벨 | `✨ feature`, `🔧 fix`, `🔥 hotfix`, `⚡ performance`, `⚙️ chore`, `🔨 refactor`, `✅ test`, `📃 docs` | `.github/labels.json` |
 | 릴리즈 노트 분류 | 병합된 PR의 라벨로 자동 분류해요. | `.github/release-drafter.yml` |
@@ -100,27 +100,29 @@ git diff --staged
 2. `git log -20 --pretty=format:'%s'`로 최근 커밋 제목을 확인해요.
 3. 문서와 최근 이력이 다르면 사용자에게 어떤 규칙을 따를지 물어요.
 
-커밋 제목은 `유형: 변경 내용` 형식으로 적어요. 유형 뒤에 콜론과 공백 한 칸을 두고, 내용은 `-다`체로 끝내요. 이슈를 만들지 않으므로 제목에 이슈 번호를 적지 않아요.
+커밋 제목은 `유형: 변경 내용` 형식으로 적어요. 유형 뒤에 콜론과 공백 한 칸을 두고, 내용은 **개조식**으로 적어요. `추가`, `수정`, `정리`처럼 명사로 끝내고 마침표를 넣지 않아요. 이슈를 만들지 않으므로 제목에 이슈 번호를 적지 않아요.
 
 ```text
-feat: RingBuffer를 추가한다
-chore: gitignore에 빌드 산출물을 추가한다
+feat: RingBuffer 추가
+chore: gitignore에 빌드 산출물 추가
 ```
+
+문장으로 설명이 필요하면 제목이 아니라 본문에 적어요. 본문은 해요체로 적어요.
 
 | 유형 | 사용 시점 | 브랜치 접두사 | PR 라벨 | 제목 예시 |
 | --- | --- | --- | --- | --- |
-| `feat` | 자료구조나 공개 API를 추가해요. | `feature/` | `✨ feature` | `feat: RingBuffer를 추가한다` |
-| `fix` | 잘못된 동작을 고쳐요. | `fix/` | `🔧 fix` | `fix: 빈 스택의 pop이 크래시하는 문제를 고친다` |
-| `perf` | 성능이나 메모리를 개선해요. | `perf/` | `⚡ performance` | `perf: push의 재할당 횟수를 줄인다` |
-| `refactor` | 동작을 유지하면서 구조를 개선해요. | `refactor/` | `🔨 refactor` | `refactor: 버퍼 관리 코드를 분리한다` |
-| `test` | 테스트를 추가하거나 수정해요. | `test/` | `✅ test` | `test: Stack 경계값 테스트를 추가한다` |
-| `docs` | 문서만 변경해요. | `docs/` | `📃 docs` | `docs: API 설계 규칙을 정리한다` |
-| `chore` | 설정이나 유지보수 작업을 해요. | `chore/` | `⚙️ chore` | `chore: gitignore를 정리한다` |
-| `ci` | GitHub Actions와 저장소 자동화를 바꿔요. | `chore/` | `⚙️ chore` | `ci: 릴리즈 워크플로를 정리한다` |
+| `feat` | 자료구조나 공개 API를 추가해요. | `feature/` | `✨ feature` | `feat: RingBuffer 추가` |
+| `fix` | 잘못된 동작을 고쳐요. | `fix/` | `🔧 fix` | `fix: 빈 스택 pop 크래시 수정` |
+| `perf` | 성능이나 메모리를 개선해요. | `perf/` | `⚡ performance` | `perf: push 재할당 횟수 감소` |
+| `refactor` | 동작을 유지하면서 구조를 개선해요. | `refactor/` | `🔨 refactor` | `refactor: 버퍼 관리 코드 분리` |
+| `test` | 테스트를 추가하거나 수정해요. | `test/` | `✅ test` | `test: Stack 경계값 테스트 추가` |
+| `docs` | 문서만 변경해요. | `docs/` | `📃 docs` | `docs: API 설계 규칙 정리` |
+| `chore` | 설정이나 유지보수 작업을 해요. | `chore/` | `⚙️ chore` | `chore: gitignore 정리` |
+| `ci` | GitHub Actions와 저장소 자동화를 바꿔요. | `chore/` | `⚙️ chore` | `ci: 릴리즈 워크플로 정리` |
 
-유형 이름은 커밋에서만 써요. 브랜치 접두사와 PR 라벨은 위 표의 대응 값을 그대로 써요. 예를 들어 공개 API를 추가하면 브랜치는 `feature/ring-buffer`, 커밋은 `feat: ...`, PR 제목은 `[feature] ...`이 돼요.
+유형 이름은 커밋에서만 써요. 브랜치 접두사와 PR 라벨은 위 표의 대응 값을 그대로 써요. 예를 들어 공개 API를 추가하면 브랜치는 `feature/ring-buffer`, 커밋은 `feat: RingBuffer 추가`, PR 제목은 `[feature] RingBuffer를 추가했어요`가 돼요.
 
-> 초기 커밋 중에는 `[#1] Algorithm과 Labs 모듈을 분리해 개별 import를 지원한다`처럼 이슈 번호를 쓴 이력이 있어요. 지금 규칙은 위 표를 따라요.
+> 초기 커밋 중에는 `[#1] Algorithm과 Labs 모듈을 분리해 개별 import를 지원한다`처럼 이슈 번호와 `-다`체를 쓴 이력이 있어요. 지금 규칙은 위 표를 따라요.
 
 한 커밋에는 하나의 논리적 변경만 담아요. 제목만으로 이유나 주의할 영향을 설명하기 어렵다면 본문을 추가해요. stage한 내용을 마지막으로 확인하고 커밋한 뒤, 생성된 커밋을 확인해요.
 
@@ -128,7 +130,7 @@ chore: gitignore에 빌드 산출물을 추가한다
 
 ```bash
 git diff --staged
-git commit -m "docs: Git 작업 흐름을 이슈 없는 PR 흐름으로 고친다"
+git commit -m "docs: Git 작업 흐름을 이슈 없는 PR 흐름으로 정리"
 git log -1 --oneline
 ```
 
@@ -168,19 +170,27 @@ gh repo view
 gh pr create \
   --base main \
   --head feature/ring-buffer \
-  --title "[feature] RingBuffer를 추가한다" \
+  --title "[feature] RingBuffer를 추가했어요" \
   --body-file /absolute/path/pr-body.md
 ```
 
 #### PR 제목을 작성해요
 
-PR 제목은 저장소 PR 템플릿을 따라 `[유형] 변경 결과` 형식으로 적고 `-다`체로 끝내요. 커밋 제목의 `유형: 내용` 형식과 다르니 헷갈리지 않게 확인해요.
+PR 제목은 저장소 PR 템플릿을 따라 `[유형] 변경 결과` 형식으로 적고 **해요체**로 끝내요. 이미 끝난 작업을 설명하므로 `~했어요`처럼 과거형으로 적어요.
 
 ```text
-[feature] RingBuffer를 추가한다
-[fix] 빈 스택에서 pop이 크래시하는 문제를 고친다
-[performance] push의 재할당 횟수를 줄인다
+[feature] RingBuffer를 추가했어요
+[fix] 빈 스택에서 pop이 크래시하는 문제를 고쳤어요
+[performance] push의 재할당 횟수를 줄였어요
 ```
+
+커밋 제목과 형식도 문체도 달라요. 헷갈리지 않게 아래 대응을 확인해요.
+
+| 위치 | 형식 | 문체 | 예시 |
+| --- | --- | --- | --- |
+| 커밋 제목 | `유형: 내용` | 개조식 | `feat: RingBuffer 추가` |
+| PR 제목 | `[유형] 내용` | 해요체 | `[feature] RingBuffer를 추가했어요` |
+| PR 본문 | 템플릿 섹션 | 해요체 | `push가 재할당하는 횟수를 줄였어요.` |
 
 PR에는 유형에 맞는 라벨을 붙여요. 라벨이 릴리즈 노트의 분류와 버전 증가 기준이 돼요.
 
@@ -195,7 +205,19 @@ PR에는 유형에 맞는 라벨을 붙여요. 라벨이 릴리즈 노트의 분
 .github/pull_request_template/*.md
 ```
 
-템플릿이 있으면 섹션과 순서를 유지해요. 확인한 체크리스트만 표시하고, 새로 작성하는 문장은 `-다`체로 통일해요. 변경 이유, 영향 범위와 실제 검증 결과를 적어요.
+템플릿이 있으면 섹션과 순서를 유지해요. 확인한 체크리스트만 표시하고, 새로 작성하는 문장은 해요체로 통일해요. 변경 이유, 영향 범위와 실제 검증 결과를 적어요.
+
+```text
+# Preferred
+Stack의 pop이 빈 상태에서 크래시하는 문제를 고쳤어요.
+Release 구성에서 10만 개 요소로 측정했고, 중앙값이 12% 줄었어요.
+
+# Avoid
+Stack의 pop이 빈 상태에서 크래시하는 문제를 고쳤다.
+성능이 크게 개선되었음.
+```
+
+읽는 사람이 판단할 수 있게 사실만 적어요. 측정하지 않은 성능 개선이나 확인하지 않은 검증을 적지 않아요. 문장을 다듬을 때는 [한국어 윤문 원칙](korean-editing.md)을 따라요.
 
 이 저장소의 템플릿에는 `자료구조·알고리즘 영향` 섹션이 있어요. 시간·공간 복잡도, 메모리 소유권과 기존 API 호환성을 비워 두지 않고 적어요. 해당 없는 항목에는 `없음`이라고 적어요.
 
@@ -219,7 +241,7 @@ git push origin --delete feature/ring-buffer
 - [ ] 현재 브랜치와 대상 기본 브랜치가 작업에 맞아요.
 - [ ] stage한 파일이 모두 이번 작업과 관련 있어요.
 - [ ] 비밀값, 개인 설정과 다른 작업의 변경을 제외했어요.
-- [ ] 커밋 제목은 `유형: 내용`, PR 제목은 `[유형] 내용` 형식을 따라요.
+- [ ] 커밋 제목은 `유형: 내용` 개조식, PR 제목과 본문은 해요체로 적었어요.
 - [ ] [AI 작성 표기 규칙](ai-attribution.md)에 따라 커밋 메시지와 PR 본문의 AI 공동 작성자·생성 문구·세션 링크를 제외했어요.
 - [ ] `swift test`를 실행했거나 실행하지 못한 이유를 기록했어요.
 - [ ] 공개 API를 바꿨다면 호환성 영향과 복잡도를 PR에 적었어요.
