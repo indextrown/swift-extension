@@ -4,9 +4,9 @@ struct Stack<T> {
     var count: Int {
         array.count
     }
-
-    var top: T? {
-        array.last
+    
+    var isEmpty: Bool {
+        array.isEmpty
     }
 
     init(array: [T]) {
@@ -17,12 +17,17 @@ struct Stack<T> {
         array.append(element)
     }
 
+    @discardableResult
     mutating func pop() -> T? {
         array.popLast()
+    }
+    
+    func peek() -> T? {
+        array.last
     }
 }
 
 var stackOfNames = Stack(array: ["A", "B", "C", "D", "E"])
 stackOfNames.push("F")
-stackOfNames.top
+stackOfNames.peek()
 stackOfNames.count
