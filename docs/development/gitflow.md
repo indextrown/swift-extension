@@ -17,9 +17,21 @@
 | PR 본문 형식 | 저장소 PR 템플릿의 섹션을 유지해요. | `.github/PULL_REQUEST_TEMPLATE.md` |
 | 라벨 | `✨ feature`, `🔧 fix`, `🔥 hotfix`, `⚡ performance`, `⚙️ chore`, `🔨 refactor`, `✅ test`, `📃 docs` | `.github/labels.json` |
 | 릴리즈 노트 분류 | 병합된 PR의 라벨로 자동 분류해요. | `.github/release-drafter.yml` |
-| PR 리뷰·병합 조건 | `확인 필요` | 브랜치 보호 규칙과 팀 합의 |
+| main 보호 | Ruleset `main protection`(active)이 걸려 있어요. | Settings → Rules → Rulesets |
+| PR 리뷰·병합 조건 | PR 필수, 승인 0명, 필수 상태 체크는 아직 지정하지 않았어요. | 같은 Ruleset |
 
 라벨은 브랜치 접두사와 릴리즈 노트 분류의 기준이에요. 이슈를 만들지 않으므로 라벨은 PR에 직접 붙여요. `.github/issue-branch.yml`은 이슈에서 브랜치를 자동 생성하는 설정이라 이 흐름에서는 동작하지 않아요.
+
+`main`은 Ruleset `main protection`으로 보호해요. 우회 대상(bypass)이 비어 있어서 저장소 소유자에게도 그대로 적용돼요.
+
+| 규칙 | 효과 |
+| --- | --- |
+| Require a pull request before merging | `main`에 직접 push할 수 없어요. 승인은 0명이라 본인이 만든 PR을 본인이 머지할 수 있어요. |
+| Restrict deletions | `main`을 삭제할 수 없어요. |
+| Block force pushes | `main`에 강제 push할 수 없어요. |
+| Require status checks to pass | 규칙은 켜져 있지만 **필수 체크 목록이 비어 있어서 지금은 아무것도 막지 않아요.** `Build (debug)`, `Build (release)`, `Test`를 추가하면 CI 실패 시 머지가 막혀요. |
+
+`Build`·`Test` 워크플로는 규칙과 상관없이 모든 PR에서 돌아요. 필수 체크로 지정하기 전까지는 결과를 사람이 확인해야 해요.
 
 ```bash
 git remote -v
