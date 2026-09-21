@@ -1,5 +1,8 @@
 # SwiftExtension
 
+[![Build](https://github.com/indextrown/swift-extension/actions/workflows/build.yml/badge.svg)](https://github.com/indextrown/swift-extension/actions/workflows/build.yml)
+[![Test](https://github.com/indextrown/swift-extension/actions/workflows/test.yml/badge.svg)](https://github.com/indextrown/swift-extension/actions/workflows/test.yml)
+
 High-performance extensions, low-level data structures, and reusable UI
 components for Swift.
 
