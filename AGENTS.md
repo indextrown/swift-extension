@@ -26,7 +26,8 @@
 | 공개 범위를 정해요. | 기본은 `internal`이에요. 외부에서 필요한 이유를 설명할 수 있을 때만 `public`으로 올려요. |
 | 공개 API를 추가하거나 바꿔요. | 문서 주석에 동작과 시간·공간 복잡도를 적고, 호환성 영향을 PR에 적어요. |
 | 성능이 좋아졌다고 적어요. | Release 구성에서 측정한 결과와 환경을 함께 적어요. 측정하지 않았으면 그렇게 적지 않아요. |
-| 코어 모듈(`Algorithm`, `SwiftExtension`)을 수정해요. | UIKit·SwiftUI·AppKit을 import하지 않아요. 플랫폼 중립을 유지해요. |
+| 코어 모듈(`Algorithm`, `SwiftExtension`, `UIComponentsCore`)을 수정해요. | UIKit·SwiftUI·AppKit을 import하지 않아요. 플랫폼 중립을 유지해요. |
+| UIKit과 SwiftUI 타깃이 같은 코드를 쓰게 돼요. | `UIComponentsCore`로 내려요. 두 UI 타깃은 서로 의존하지 않아요. |
 | 외부 의존성을 추가하고 싶어요. | 바로 추가하지 않고 필요한 이유와 대안을 먼저 정리해요. |
 | 실험 중인 구현을 추가해요. | `Sources/Labs/`에서 시작하고, 정식 모듈로 옮기는 기준은 [패키지 구조](docs/architecture/architecture.md)를 따라요. |
 | 문서와 코드가 달라요. | 실제 코드와 `Package.swift`를 기준으로 작업하고 관련 문서도 같은 작업에서 고쳐요. |

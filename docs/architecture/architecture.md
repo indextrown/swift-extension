@@ -31,11 +31,13 @@
 | `Algorithm` | `Algorithm` | `Sources/Algorithm/` | 자료구조와 알고리즘 구현을 담아요. 지금은 `Stack`이 있어요. |
 | `Labs` | `Labs` | `Sources/Labs/` | 아직 공개 API로 확정하지 않은 실험 구현과 Playground를 담아요. |
 | `SwiftExtension` | `SwiftExtension` | `Sources/SwiftExtension/` | 패키지 수준 정보(`SwiftExtension.version`)를 담는 진입 모듈이에요. |
-| `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰와 확장을 담아요. 지금은 [바텀시트](../components/bottom-sheet.md)가 있어요. |
-| `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰와 `ViewModifier`를 담아요. 아직 공개 선언이 없어요. |
+| `UIComponentsCore` | `UIComponentsCore` | `Sources/UIComponentsCore/` | UI 타깃 둘이 함께 쓰는 프레임워크 중립 계산을 담아요. `import Foundation`만 써요. 지금은 바텀시트의 단계·레이아웃·움직임 값이 있어요. |
+| `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰와 확장을 담아요. 지금은 [바텀시트](../components/bottom-sheet.md) `BottomSheetController`가 있어요. |
+| `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰와 수정자를 담아요. 지금은 [바텀시트](../components/bottom-sheet.md) `bottomSheet(detent:)`가 있어요. |
 | — | `AlgorithmTests` | `Tests/AlgorithmTests/` | `Algorithm` 테스트 |
 | — | `LabsTests` | `Tests/LabsTests/` | `Labs` 테스트 |
 | — | `SwiftExtensionTests` | `Tests/SwiftExtensionTests/` | `SwiftExtension` 테스트 |
+| — | `UIComponentsCoreTests` | `Tests/UIComponentsCoreTests/` | `UIComponentsCore` 테스트. macOS CI에서 돌아요 |
 | — | `UIKitExtensionTests` | `Tests/UIKitExtensionTests/` | `UIKitExtension` 테스트 |
 | — | `SwiftUIExtensionTests` | `Tests/SwiftUIExtensionTests/` | `SwiftUIExtension` 테스트 |
 
@@ -62,29 +64,34 @@
 ## 의존성 방향
 
 ```text
-                 ┌─────────────────────┐
-                 │  UIKitExtension     │
-                 │  SwiftUIExtension   │
-                 └──────────┬──────────┘
-                            │ 단방향
-                            ▼
-      ┌─────────────┐   ┌──────────────────┐
-      │  Algorithm  │   │  SwiftExtension  │   플랫폼 중립 코어
-      └─────────────┘   └──────────────────┘
-                            ▲
-                            │ 승격
-                      ┌───────────┐
-                      │   Labs    │   실험 구현
-                      └───────────┘
+  ┌──────────────────┐   ┌──────────────────┐
+  │  UIKitExtension  │   │ SwiftUIExtension │   UI 타깃. 서로 의존하지 않아요
+  └─────────┬────────┘   └────────┬─────────┘
+            └───────────┬─────────┘
+                        ▼  @_exported로 다시 내보내요
+              ┌──────────────────┐
+              │ UIComponentsCore │   UI 공용 계산. Foundation만 써요
+              └──────────────────┘
+
+  ┌─────────────┐   ┌──────────────────┐
+  │  Algorithm  │   │  SwiftExtension  │   플랫폼 중립 코어
+  └─────────────┘   └──────────────────┘
+         ▲
+         │ 승격
+   ┌───────────┐
+   │   Labs    │   실험 구현
+   └───────────┘
 ```
 
-- UI 타깃은 코어 모듈에 의존할 수 있어요. 코어 모듈이 UI 타깃에 의존하지 않아요. 지금은 두 UI 타깃 모두 의존성이 없어요. 코어 타입이 필요해지면 그때 `dependencies`에 추가해요.
+- UI 타깃 둘은 `UIComponentsCore`에 의존하고, 그 타입을 `@_exported import`로 다시 내보내요. 쓰는 쪽은 `import UIKitExtension` 하나로 `BottomSheetLayout`까지 써요.
+- `UIComponentsCore`는 UIKit·SwiftUI를 모르는 계산만 담아요. 두 UI 타깃이 같은 코드를 쓰게 되면 여기로 내려요. 그래서 macOS `swift test`와 CI에서도 검증돼요.
+- UI 타깃은 `Algorithm`, `SwiftExtension`에도 의존할 수 있어요. 코어 모듈이 UI 타깃에 의존하지 않아요.
 - `Labs`는 어떤 타깃도 의존하지 않아요. 실험이 끝나면 코드를 코어 모듈로 옮겨요.
 - 순환 의존이 필요해 보이면 타입의 위치나 책임을 잘못 나눈 신호예요. 공통 부분을 아래 계층으로 내려요.
 
 ## UI 타깃
 
-UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃으로 나눠 담아요. product도 각각 분리해서, SwiftUI만 쓰는 앱이 UIKit 쪽 코드를 링크하지 않게 해요. 설계 규칙은 [UI 모듈 가이드](ui-modules.md)에 있어요.
+UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃으로 나눠 담아요. product도 각각 분리해서, SwiftUI만 쓰는 앱이 UIKit 쪽 코드를 링크하지 않게 해요. 둘이 함께 쓰는 계산은 `UIComponentsCore`에 두고 각 타깃이 다시 내보내요. 설계 규칙은 [UI 모듈 가이드](ui-modules.md)에 있어요.
 
 ## 새 자료구조를 추가하는 흐름
 

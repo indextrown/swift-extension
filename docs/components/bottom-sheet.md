@@ -1,6 +1,6 @@
 # 바텀시트
 
-> `UIKitExtension`의 `BottomSheetController`를 쓰고 고치는 기준이에요. 코드는 `Sources/UIKitExtension/BottomSheet/`에 있어요. 문서와 코드가 다르면 코드를 따르고 이 문서도 같은 작업에서 고쳐요.
+> 탭바 뒤에서 올라오는 바텀시트를 쓰고 고치는 기준이에요. UIKit 판 `BottomSheetController`와 SwiftUI 판 `bottomSheet(detent:)`가 있고, 둘은 `UIComponentsCore`의 같은 단계·위치 계산을 써요. 문서와 코드가 다르면 코드를 따르고 이 문서도 같은 작업에서 고쳐요.
 
 ## 목차
 
@@ -13,6 +13,7 @@
 - [모양과 움직임 바꾸기](#모양과-움직임-바꾸기)
 - [대리자](#대리자)
 - [접근성](#접근성)
+- [SwiftUI에서 쓰기](#swiftui에서-쓰기)
 - [검증 방법](#검증-방법)
 - [알려진 제한과 후속 과제](#알려진-제한과-후속-과제)
 - [참고한 구현](#참고한-구현)
@@ -34,18 +35,25 @@ UIKit의 `UISheetPresentationController`는 `present`로 띄워요. 창 전체�
 
 ## 구성 요소
 
-| 파일 | 역할 | UIKit 의존 |
-| --- | --- | --- |
-| `BottomSheetAnchor.swift` | 단계의 높이를 재는 방법(`height`, `fraction`, `topInset`, `hidden`)과 offset 계산 | 없음 |
-| `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden` 프리셋 | 없음 |
-| `BottomSheetLayout.swift` | 단계 목록. 가장 가까운 단계 찾기, 위·아래 단계, 저항, 속도 투영 | 없음 |
-| `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계 | 없음 |
-| `BottomSheetAppearance.swift` | 배경색, 모서리, 손잡이, 그림자, 뒷판 | UIKit |
-| `BottomSheetSurfaceView.swift` | 시트 겉면과 손잡이 View. 그림자 경로, VoiceOver 조작 | UIKit |
-| `BottomSheetControllerDelegate.swift` | 끌기 시작·이동·도착 단계 결정·단계 변경 콜백 | UIKit |
-| `BottomSheetController.swift` | 자식으로 붙이기, 제스처, 스크롤 따라가기, 애니메이션 | UIKit |
+세 타깃에 나뉘어 있어요. 계산은 한 곳에 두고, 그리는 쪽만 프레임워크별로 따로 만들었어요.
 
-UIKit에 의존하지 않는 네 파일은 macOS에서 `swift test`로 검증돼요. CI가 macOS 러너라서, 위치 계산의 회귀는 PR 단계에서 잡혀요. UIKit 파일은 `#if canImport(UIKit) && !os(watchOS) && !os(tvOS)`로 감싸 macOS 빌드에서 빠져요.
+| 타깃 | 파일 | 역할 |
+| --- | --- | --- |
+| `UIComponentsCore` | `BottomSheetAnchor.swift` | 단계의 높이를 재는 방법(`height`, `fraction`, `topInset`, `hidden`)과 offset 계산 |
+| `UIComponentsCore` | `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden` 프리셋 |
+| `UIComponentsCore` | `BottomSheetLayout.swift` | 단계 목록. 가장 가까운 단계, 위·아래 단계, 저항, 속도 투영, 뒷판 진행률 |
+| `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계 |
+| `UIKitExtension` | `BottomSheetAppearance.swift` | 배경색, 모서리, 손잡이, 그림자, 뒷판 (UIKit 타입) |
+| `UIKitExtension` | `BottomSheetSurfaceView.swift` | 시트 겉면과 손잡이 View. 그림자 경로, VoiceOver 조작 |
+| `UIKitExtension` | `BottomSheetControllerDelegate.swift` | 끌기 시작·이동·도착 단계 결정·단계 변경 콜백 |
+| `UIKitExtension` | `BottomSheetController.swift` | 자식으로 붙이기, 제스처, 스크롤 따라가기, 애니메이션 |
+| `SwiftUIExtension` | `BottomSheetStyle.swift` | 배경, 모서리, 손잡이, 그림자, 뒷판 (SwiftUI 타입) |
+| `SwiftUIExtension` | `BottomSheetScrollView.swift` | 스크롤 위치를 시트에 알리는 `ScrollView` 포장 |
+| `SwiftUIExtension` | `BottomSheetModifier.swift` | `View.bottomSheet(detent:)` 수정자와 시트를 그리는 overlay |
+
+`UIComponentsCore`는 `import Foundation`만 써서 macOS `swift test`와 CI에서 검증돼요. 위치 계산의 회귀는 PR 단계에서 잡혀요. 두 UI 타깃은 이 모듈을 `@_exported import`로 다시 내보내므로 `import UIKitExtension` 또는 `import SwiftUIExtension` 하나로 `BottomSheetLayout` 같은 타입을 써요.
+
+UIKit 파일은 `#if canImport(UIKit) && !os(watchOS) && !os(tvOS)`, SwiftUI 파일은 `#if !os(tvOS)`와 `@available(iOS 17.0, macOS 14.0, watchOS 10.0, *)`로 감쌌어요.
 
 ## 기본 사용법
 
@@ -201,13 +209,52 @@ func bottomSheet(_ controller: BottomSheetController, didChangeDetent detent: Bo
 - `adjustable` 특성이라 위로 쓸어 올리면 한 단계 올라가고, 내리면 한 단계 내려가요. `allowedDetents`를 따라요.
 - 동작 줄이기(`UIAccessibility.isReduceMotionEnabled`)가 켜져 있으면 스프링 대신 완만한 곡선으로 옮기고, 처음 올라오는 애니메이션을 생략해요.
 
+## SwiftUI에서 쓰기
+
+`SwiftUIExtension`의 `bottomSheet(detent:)` 수정자를 부모 View에 붙여요. `TabView`의 탭 콘텐츠에 붙이면 시트가 탭바 뒤에 놓여요.
+
+```swift
+import SwiftUIExtension
+
+struct MapScreen: View {
+
+    @State private var detent: BottomSheetDetent.Identifier = .tip
+
+    var body: some View {
+        MapView()
+            .bottomSheet(detent: self.$detent, layout: .standard) {
+                BottomSheetScrollView {
+                    LazyVStack { ForEach(self.places) { PlaceRow($0) } }
+                }
+            }
+    }
+}
+```
+
+- `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. UIKit의 `move(to:)`와 `currentDetent`를 하나로 합친 거예요.
+- 스크롤이 필요한 콘텐츠는 **`ScrollView` 대신 `BottomSheetScrollView`를 써요.** SwiftUI `ScrollView`는 스크롤 위치를 바깥에 알려 주지 않아서, 시트가 "맨 위에서 아래로 끌었다"를 알 방법이 없어요. 이 포장이 위치를 `PreferenceKey`로 올려 보내요.
+- 단계·레이아웃·움직임은 UIKit 판과 **같은 타입**(`BottomSheetLayout`, `BottomSheetBehavior`)을 써요. 모양만 `BottomSheetStyle`로 따로 있어요. SwiftUI 타입(`Color`, `ShapeStyle`)을 쓰기 때문이에요.
+- `onOffsetChange`는 끄는 동안만 와요. UIKit의 `didMoveTo`와 같아요.
+- 손잡이는 VoiceOver `adjustable` 요소이고, 동작 줄이기가 켜져 있으면 스프링 대신 완만한 곡선을 써요.
+
+UIKit 판과 다른 점이에요.
+
+| | UIKit `BottomSheetController` | SwiftUI `bottomSheet(detent:)` |
+| --- | --- | --- |
+| 붙는 방식 | `add(to:)`로 자식 뷰컨트롤러 | 부모 View의 `.overlay` |
+| 최소 버전 | iOS 15 | iOS 17, macOS 14, watchOS 10 |
+| 스크롤 잠그기 | `contentOffset`을 KVO로 되돌려요 | `scrollDisabled`로 잠가요. 잠기는 순간 진행 중인 스크롤이 끊겨요 |
+| 스크롤 → 시트 (맨 위에서 아래로) | 어떤 `UIScrollView`든 `track(scrollView:)` | `BottomSheetScrollView`를 쓴 콘텐츠만 |
+| 시트 → 스크롤 (가장 높은 단계 너머로 밀 때) | 스크롤로 넘겨요 | 넘기지 않고 저항만 줘요. 손을 떼면 가장 높은 단계에 멈추고 그 뒤에 스크롤이 돼요 |
+| 콘텍스트 없는 상태 읽기 | `currentOffset`, `availableHeight`, `offset(for:)` | 바인딩과 `onOffsetChange`만. 도착 위치가 필요하면 `layout.offset(for:availableHeight:)`에 부모 안전 영역 높이를 넣어요 |
+
 ## 검증 방법
 
 | 무엇을 | 어떻게 | 어디서 |
 | --- | --- | --- |
 | 위치 계산, 저항, 속도 투영 | `swift test --filter UIKitExtensionTests` | macOS, CI |
 | 자식 붙이기, 단계 이동, 허용 목록, 대리자, hidden 위치 | 아래 `xcodebuild test` | iOS 시뮬레이터 |
-| 제스처 손맛, 스크롤 핸드오프, 탭바 뒤 배치 | `Demo/SwiftExtensionDemo` 앱을 눌러 봐요 | iOS 시뮬레이터 |
+| 제스처 손맛, 스크롤 핸드오프, 탭바 뒤 배치 | `Demo/SwiftExtensionDemo` 앱을 눌러 봐요. UIKit 판은 `UIKitExtension` 섹션, SwiftUI 판은 `SwiftUIExtension` 섹션 | iOS 시뮬레이터 |
 
 ```bash
 xcodebuild test \
@@ -229,7 +276,9 @@ xcodebuild test \
 | 키보드 | 대응하지 않아요 | 키보드가 올라오면 시트를 함께 올리는 옵션 |
 | 가로 모드·iPad | 세로 바텀시트 하나 | 넓은 화면에서 옆으로 붙는 패널 레이아웃 |
 | 콘텐츠 크기 기반 단계 | 없어요 | `intrinsicContentSize`로 높이를 재는 anchor |
-| CI | macOS 러너라 UIKit 코드가 컴파일되지 않아요 | 시뮬레이터 빌드·테스트 잡 추가 |
+| SwiftUI 일반 `ScrollView` | 가장 높은 단계 아래에서만 잠겨요. 맨 위에서 시트로 넘어오지 않아요 | `BottomSheetScrollView`를 쓰거나, iOS 18 `onScrollGeometryChange`로 일반 `ScrollView`도 지원 |
+| SwiftUI 시트 → 스크롤 핸드오프 | 가장 높은 단계 너머로 밀어도 스크롤로 넘기지 않아요 | SwiftUI에서 진행 중인 제스처를 `ScrollView`에 넘길 방법이 생기면 |
+| CI | macOS 러너라 UIKit·SwiftUI 코드가 컴파일되지 않아요 (SwiftUI 파일은 macOS 14 availability로 컴파일은 돼요) | 시뮬레이터 빌드·테스트 잡 추가 |
 
 ## 참고한 구현
 

@@ -18,8 +18,9 @@ components live in their own targets so clients only link what they use.
 | `Algorithm` | Available | Data structures and algorithms. Currently `Stack`. |
 | `Labs` | Available | Experimental implementations and playgrounds. Not part of the public API surface yet. |
 | `SwiftExtension` | Available | Package-level entry point. Exposes `SwiftExtension.version`. |
+| `UIComponentsCore` | Available | Framework-neutral logic shared by the UI modules (bottom sheet detents, layout math, motion). Foundation only. Re-exported by both UI modules. |
 | `UIKitExtension` | Available | Reusable UIKit components. Currently `BottomSheetController`, a bottom sheet that rises from behind the tab bar. |
-| `SwiftUIExtension` | Available | Reusable SwiftUI views, `View` extensions, and view modifiers. No public declarations yet. |
+| `SwiftUIExtension` | Available | Reusable SwiftUI components. Currently the `bottomSheet(detent:)` modifier and `BottomSheetScrollView` (iOS 17+). |
 
 Core modules never import UIKit, SwiftUI, or AppKit, so they can be used on
 servers and command line tools as well as Apple platforms.
@@ -94,6 +95,7 @@ Sources/
 ├── Algorithm/         data structures and algorithms
 ├── Labs/              experimental code and playgrounds
 ├── SwiftExtension/    package entry point
+├── UIComponentsCore/  logic shared by the UI modules (Foundation only)
 ├── UIKitExtension/    reusable UIKit components
 └── SwiftUIExtension/  reusable SwiftUI components
 Tests/                 one test target per product

@@ -17,7 +17,7 @@
 
 | 항목 | 확인한 값 |
 | --- | --- |
-| 테스트 타깃 | `AlgorithmTests`, `LabsTests`, `SwiftExtensionTests` |
+| 테스트 타깃 | `AlgorithmTests`, `LabsTests`, `SwiftExtensionTests`, `UIComponentsCoreTests`, `UIKitExtensionTests`, `SwiftUIExtensionTests` |
 | 테스트 프레임워크 | Swift Testing (`import Testing`, `@Test`, `#expect`) |
 | 실행 환경 | macOS에서 `swift test`로 실행해요. 시뮬레이터가 필요하지 않아요. |
 | CI 검증 | `main` 푸시와 모든 PR에서 `Build`·`Test` 워크플로가 macOS 러너로 돌아요. UIKit 코드는 CI에서 컴파일되지 않아요. |

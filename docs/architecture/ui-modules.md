@@ -28,14 +28,16 @@
 
 | 타깃 | 컴포넌트 | 문서 |
 | --- | --- | --- |
+| `UIComponentsCore` | `BottomSheetAnchor` `BottomSheetDetent` `BottomSheetLayout` `BottomSheetBehavior` — 두 UI 타깃이 공유하는 단계·위치·움직임 계산 | [바텀시트](../components/bottom-sheet.md) |
 | `UIKitExtension` | `BottomSheetController` — 탭바 뒤에서 올라오는 바텀시트 | [바텀시트](../components/bottom-sheet.md) |
-| `SwiftUIExtension` | 아직 없어요 | — |
+| `SwiftUIExtension` | `bottomSheet(detent:)` 수정자, `BottomSheetScrollView` — 같은 시트의 SwiftUI 판. iOS 17+ | [바텀시트](../components/bottom-sheet.md) |
 
 ## 의존성 규칙
 
 - UI 타깃은 `Algorithm`, `SwiftExtension` 같은 코어 모듈에 의존할 수 있어요.
 - 코어 모듈은 UI 타깃에 의존하지 않아요. UIKit·SwiftUI를 import하지도 않아요.
-- `UIKitExtension`과 `SwiftUIExtension`은 서로 의존하지 않아요. 공통 코드가 생기면 코어 모듈로 내리거나, 공통 타깃을 새로 만드는 것을 먼저 논의해요.
+- `UIKitExtension`과 `SwiftUIExtension`은 서로 의존하지 않아요. 둘이 같은 코드를 쓰게 되면 `UIComponentsCore`로 내려요. 이 타깃은 `import Foundation`만 쓰고, 두 UI 타깃이 `@_exported import`로 다시 내보내요.
+- `@_exported`는 밑줄이 붙은 비공식 속성이지만 SwiftPM 라이브러리에서 널리 쓰여요. 이걸 쓰는 이유는 쓰는 쪽이 `import UIKitExtension` 하나로 끝나게 하기 위해서예요.
 - 외부 UI 라이브러리(SnapKit 등)를 의존성으로 추가하지 않아요. 레이아웃은 표준 API로 작성해요.
 
 ## 플랫폼 분기와 가용성
