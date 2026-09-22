@@ -51,7 +51,8 @@ public struct BottomSheetScrollView<Content: View>: View {
                             key: BottomSheetScrollStateKey.self,
                             value: BottomSheetScrollState(
                                 isAtTop: proxy.frame(in: .named(Self.spaceName)).minY >= -0.5,
-                                isPresent: true
+                                isPresent: true,
+                                contentHeight: proxy.size.height
                             )
                         )
                     }
@@ -73,6 +74,9 @@ struct BottomSheetScrollState: Equatable {
 
     /// 콘텐츠 안에 `BottomSheetScrollView`가 있는지 나타냅니다.
     var isPresent: Bool
+
+    /// 스크롤 안쪽 콘텐츠의 높이입니다. `.content` 단계가 시트 높이를 정할 때 씁니다.
+    var contentHeight: CGFloat = 0
 }
 
 struct BottomSheetScrollStateKey: PreferenceKey {

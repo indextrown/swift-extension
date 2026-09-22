@@ -59,6 +59,14 @@ extension DemoItem {
             systemImage: "rectangle.bottomhalf.inset.filled"
         ) {
             NativeSheetDemoScreen()
+        },
+        DemoItem(
+            id: "content-sized-sheet",
+            title: "콘텐츠 높이 시트",
+            subtitle: ".content(padding:) 단계 · UIKit",
+            systemImage: "arrow.up.and.down.square"
+        ) {
+            ContentSizedSheetDemoScreen()
         }
     ]
 
@@ -79,6 +87,14 @@ extension DemoItem {
             systemImage: "rectangle.bottomhalf.inset.filled"
         ) {
             SwiftUINativeSheetDemoScreen()
+        },
+        DemoItem(
+            id: "content-sized-sheet-swiftui",
+            title: "콘텐츠 높이 시트",
+            subtitle: ".content(padding:) 단계 · SwiftUI",
+            systemImage: "arrow.up.and.down.square"
+        ) {
+            SwiftUIContentSizedSheetDemoScreen()
         }
     ]
 }

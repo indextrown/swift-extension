@@ -10,6 +10,7 @@
 - [단계와 offset](#단계와-offset)
 - [탭바 뒤에서 올라오는 원리](#탭바-뒤에서-올라오는-원리)
 - [스크롤뷰 따라가기](#스크롤뷰-따라가기)
+- [콘텐츠 높이만큼 올라오는 .content 단계](#콘텐츠-높이만큼-올라오는-content-단계)
 - [모양과 움직임 바꾸기](#모양과-움직임-바꾸기)
 - [콘텐츠 높이 모드](#콘텐츠-높이-모드)
 - [대리자](#대리자)
@@ -41,7 +42,7 @@ UIKit의 `UISheetPresentationController`는 `present`로 띄워요. 창 전체�
 | 타깃 | 파일 | 역할 |
 | --- | --- | --- |
 | `UIComponentsCore` | `BottomSheetAnchor.swift` | 단계의 높이를 재는 방법(`height`, `fraction`, `topInset`, `hidden`)과 offset 계산 |
-| `UIComponentsCore` | `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden` 프리셋 |
+| `UIComponentsCore` | `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden`, `content` 프리셋 |
 | `UIComponentsCore` | `BottomSheetLayout.swift` | 단계 목록. 가장 가까운 단계, 위·아래 단계, 저항, 속도 투영, 뒷판 진행률 |
 | `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계, 스크롤이 시트를 올릴지 |
 | `UIKitExtension` | `BottomSheetAppearance.swift` | 배경색, 모서리, 손잡이, 그림자, 뒷판 (UIKit 타입) |
@@ -103,6 +104,7 @@ final class MapViewController: UIViewController {
 | `.fraction(0.5)` | 쓸 수 있는 높이의 절반 | 화면 비중이 기준인 단계 |
 | `.topInset(16)` | 위에서 16pt 남김 | 거의 다 채우는 단계 |
 | `.hidden` | 화면 밖 | 시트를 완전히 내릴 때. 되돌릴 조작이 화면에 있어야 해요 |
+| `.content(padding: 16)` | 콘텐츠가 차지하는 높이 + 16 | 카드 몇 장처럼 스크롤이 필요 없는 콘텐츠를 아래 여백 없이 딱 맞게. 아래 [콘텐츠 높이만큼](#콘텐츠-높이만큼-올라오는-content-단계) 참고 |
 
 ```swift
 let layout = BottomSheetLayout(detents: [
@@ -115,6 +117,40 @@ let layout = BottomSheetLayout(detents: [
 - 같은 레이아웃 안에서 이름은 겹치면 안 돼요. 겹치면 `precondition`으로 중단돼요.
 - 순서는 상관없어요. 어느 단계가 더 높은지는 실제 offset으로 매번 계산해요. 화면이 좁아 순서가 뒤바뀌어도 동작해요.
 - anchor의 결과는 `0...availableHeight`로 잘라 내요. 요청한 높이가 화면보다 커도 안전 영역 위로 나가지 않아요.
+- `offset(for:availableHeight:)`는 넘긴 단계와 **같은 이름**이 레이아웃에 있으면 레이아웃의 정의를 따라요. `.content`를 잰 높이로 바꾼 레이아웃에 원래 단계 값을 넘겨도 맞는 값이 나오게 하려는 거예요.
+
+## 콘텐츠 높이만큼 올라오는 `.content` 단계
+
+시트 안이 스크롤할 필요 없는 상태 카드 몇 장이면 `half`나 `.height(300)`처럼 정해 둔 높이는 콘텐츠 아래에 빈 여백을 남겨요. `.content(padding:)` 단계는 **콘텐츠가 실제로 차지하는 높이**를 시트가 재서 그만큼만 올라와요. `padding`은 콘텐츠 아래에 더 남길 여백이고, 손잡이 높이는 시트가 알아서 더해요.
+
+```swift
+// UIKit
+let sheet = BottomSheetController(
+    contentViewController: StatusCardsViewController(),
+    layout: BottomSheetLayout(detents: [.hidden, .content(padding: 16)]),
+    initialDetent: .content
+)
+
+// SwiftUI
+.bottomSheet(detent: $detent, layout: BottomSheetLayout(detents: [.hidden, .content(padding: 16)])) {
+    VStack(spacing: 12) { ForEach(cards) { StatusCard($0) } }.padding(16)
+}
+```
+
+높이는 이렇게 재요.
+
+| | UIKit `BottomSheetController` | SwiftUI `bottomSheet(detent:)` |
+| --- | --- | --- |
+| 기본 | 콘텐츠 View의 Auto Layout 압축 크기(`systemLayoutSizeFitting`). 제약이 위에서 아래로 이어져 있어야 정확해요. 아래쪽 제약은 View 가장자리에 `<=`로 붙여요(아래 참고) | 콘텐츠 View가 스스로 차지하는 높이. `frame(maxHeight: .infinity)`로 늘리기 전의 본래 크기예요 |
+| 스크롤뷰일 때 | `track(scrollView:)`로 넘긴 스크롤뷰(또는 콘텐츠 View 자체가 스크롤뷰)의 `contentSize` | `BottomSheetScrollView` 안쪽 콘텐츠의 높이. 일반 `ScrollView`·`List`는 주어진 높이를 다 채워서 못 재요 |
+| 직접 정하기 | 콘텐츠 화면의 `preferredContentSize.height`가 0보다 크면 그 값을 우선해요 | `.content` 대신 `.height(n)`을 쓰거나 콘텐츠에 `frame(height:)`를 줘요 |
+| 다시 재는 때 | 배치가 돌 때, `preferredContentSize`가 바뀔 때, 따라가는 스크롤뷰의 `contentSize`가 바뀔 때. 그 밖에는 `invalidateContentHeight()`를 불러요 | SwiftUI가 콘텐츠를 다시 그릴 때 저절로 |
+| 바뀐 뒤 | `.content`에 머물고 있으면 스프링으로 새 높이로 옮겨요. 끌고 있는 동안은 건드리지 않아요 | 같아요 |
+
+- 콘텐츠가 화면보다 크면 안전 영역 위쪽까지만 올라와요(`.height`와 같은 잘라 내기).
+- UIKit 콘텐츠의 **아래쪽 제약은 `view.bottomAnchor`에 `lessThanOrEqualTo`로** 붙여요. `static` 모드의 시트 View는 탭바 뒤와 화면 밖까지 이어져 잰 높이보다 크기 때문에, `=`로 붙이면 마지막 View가 그만큼 늘어나요. `safeAreaLayoutGuide.bottomAnchor`에 붙이면 압축 크기에 안전 영역 아래 여백이 함께 잡혀 실제보다 크게 재요. 이런 콘텐츠는 `preferredContentSize`로 높이를 직접 정해요.
+- 재기 전(첫 배치 전)에는 `padding`만큼 보이는 것으로 계산해요. 첫 배치에서 바로 재므로 보통 눈에 띄지 않아요.
+- 코어(`BottomSheetLayout`)는 콘텐츠를 잴 수 없어요. UI 계층이 잰 값을 `resolvingContentHeight(_:)`로 넘기면 `.content` 단계가 같은 이름의 `.height`로 바뀐 레이아웃을 돌려주고, 위치 계산은 전부 그 레이아웃으로 해요. 계산 함수마다 콘텐츠 높이를 넘기지 않아도 되게 한 설계예요.
 
 ## 탭바 뒤에서 올라오는 원리
 
@@ -308,8 +344,8 @@ xcodebuild test \
 | 애니메이션 중 위치 콜백 (UIKit) | 손으로 끄는 동안만 `didMoveTo`. 도착값은 `didChangeCoveredHeight(animated: true)`로 한 번 와요. SwiftUI 판은 `onOffsetChange`가 애니메이션 중에도 매 프레임 와요 | UIKit에서도 프레임별 값이 필요해지면 `CADisplayLink`로 알리기 |
 | 키보드 | 대응하지 않아요 | 키보드가 올라오면 시트를 함께 올리는 옵션 |
 | 가로 모드·iPad | 세로 바텀시트 하나 | 넓은 화면에서 옆으로 붙는 패널 레이아웃 |
-| 콘텐츠 크기 기반 단계 | 없어요 | `intrinsicContentSize`로 높이를 재는 anchor |
-| SwiftUI 일반 `ScrollView` | 가장 높은 단계 아래에서만 잠겨요. 맨 위에서 시트로 넘어오지 않아요 | `BottomSheetScrollView`를 쓰거나, iOS 18 `onScrollGeometryChange`로 일반 `ScrollView`도 지원 |
+| SwiftUI 일반 `ScrollView` | 가장 높은 단계 아래에서만 잠겨요. 맨 위에서 시트로 넘어오지 않아요. `.content` 단계의 높이도 못 재요 | `BottomSheetScrollView`를 쓰거나, iOS 18 `onScrollGeometryChange`로 일반 `ScrollView`도 지원 |
+| UIKit `.content` 단계의 자동 재측정 | 배치·`preferredContentSize`·스크롤뷰 `contentSize` 변화만 감지해요. 스택에 뷰를 더하는 식의 변화는 `invalidateContentHeight()`를 불러야 해요 | 콘텐츠 View의 크기 변화를 감지하는 방법이 생기면 자동으로 |
 | SwiftUI 시트 → 스크롤 핸드오프 | 가장 높은 단계 너머로 밀어도 스크롤로 넘기지 않아요 | SwiftUI에서 진행 중인 제스처를 `ScrollView`에 넘길 방법이 생기면 |
 | CI | macOS 러너라 UIKit·SwiftUI 코드가 컴파일되지 않아요 (SwiftUI 파일은 macOS 14 availability로 컴파일은 돼요) | 시뮬레이터 빌드·테스트 잡 추가 |
 

@@ -15,9 +15,10 @@ private struct SheetFixture {
         layout: BottomSheetLayout = .standard,
         initialDetent: BottomSheetDetent.Identifier = .tip,
         contentMode: BottomSheetContentMode = .static,
-        behavior: BottomSheetBehavior = BottomSheetBehavior(animatesInitialAppearance: false)
+        behavior: BottomSheetBehavior = BottomSheetBehavior(animatesInitialAppearance: false),
+        content: UIViewController = UIViewController()
     ) {
-        self.content = UIViewController()
+        self.content = content
         self.sheet = BottomSheetController(
             contentViewController: self.content,
             layout: layout,
@@ -52,6 +53,37 @@ private struct SheetFixture {
         self.sheet.track(scrollView: scrollView)
 
         return scrollView
+    }
+}
+
+/// Auto Layout 제약으로 정해진 높이를 갖는 콘텐츠예요. `.content` 단계 측정을 확인하는 데 써요.
+@MainActor
+private final class FixedHeightContentViewController: UIViewController {
+
+    let heightConstraint: NSLayoutConstraint
+    private let box = UIView()
+
+    init(height: CGFloat) {
+        self.heightConstraint = self.box.heightAnchor.constraint(equalToConstant: height)
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        self.box.translatesAutoresizingMaskIntoConstraints = false
+        self.view.addSubview(self.box)
+
+        NSLayoutConstraint.activate([
+            self.box.topAnchor.constraint(equalTo: self.view.topAnchor),
+            self.box.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            self.box.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            self.box.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
+            self.heightConstraint
+        ])
     }
 }
 
@@ -254,6 +286,59 @@ func trackedScrollIsPinnedBelowHighestDetentByDefault() {
     fixture.sheet.move(to: .full, animated: false)
     scrollView.contentOffset = CGPoint(x: 0, y: 120)
     #expect(scrollView.contentOffset.y == 120)
+}
+
+@Test("content 단계는 손잡이 + 콘텐츠 높이 + 여백만큼만 올라오고, 콘텐츠가 바뀌면 다시 재요") @MainActor
+func contentDetentFitsMeasuredContent() {
+    let content = FixedHeightContentViewController(height: 150)
+    let fixture = SheetFixture(
+        layout: BottomSheetLayout(detents: [.hidden, .content(padding: 12)]),
+        initialDetent: .content,
+        content: content
+    )
+    let handle = fixture.sheet.appearance.handleAreaHeight
+
+    #expect(fixture.sheet.currentOffset == fixture.availableHeight - (handle + 150 + 12))
+    #expect(fixture.sheet.currentDetent.identifier == BottomSheetDetent.Identifier.content)
+
+    content.heightConstraint.constant = 230
+    fixture.sheet.invalidateContentHeight()
+
+    #expect(fixture.sheet.currentOffset == fixture.availableHeight - (handle + 230 + 12))
+}
+
+@Test("preferredContentSize를 정하면 그 높이를 우선하고, 바꾸면 자동으로 다시 재요") @MainActor
+func preferredContentSizeOverridesMeasurement() {
+    let content = FixedHeightContentViewController(height: 150)
+    content.preferredContentSize = CGSize(width: 0, height: 300)
+    let fixture = SheetFixture(
+        layout: BottomSheetLayout(detents: [.content()]),
+        initialDetent: .content,
+        content: content
+    )
+    let handle = fixture.sheet.appearance.handleAreaHeight
+
+    #expect(fixture.sheet.currentOffset == fixture.availableHeight - (handle + 300))
+
+    content.preferredContentSize = CGSize(width: 0, height: 180)
+
+    #expect(fixture.sheet.currentOffset == fixture.availableHeight - (handle + 180))
+}
+
+@Test("따라가는 스크롤뷰가 있으면 contentSize로 재요") @MainActor
+func contentDetentUsesTrackedScrollViewContentSize() {
+    let fixture = SheetFixture(
+        layout: BottomSheetLayout(detents: [.content()]),
+        initialDetent: .content
+    )
+    let scrollView = UIScrollView(frame: fixture.content.view.bounds)
+    scrollView.contentInsetAdjustmentBehavior = .never
+    fixture.content.view.addSubview(scrollView)
+    fixture.sheet.track(scrollView: scrollView)
+
+    scrollView.contentSize = CGSize(width: 100, height: 140)
+
+    #expect(fixture.sheet.currentOffset == fixture.availableHeight - (fixture.sheet.appearance.handleAreaHeight + 140))
 }
 
 @Test("스크롤이 시트를 올리지 않는 모드에서는 어느 단계에서든 스크롤이 자유로워요") @MainActor

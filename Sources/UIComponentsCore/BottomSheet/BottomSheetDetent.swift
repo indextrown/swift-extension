@@ -45,6 +45,9 @@ public struct BottomSheetDetent: Hashable, Sendable {
 
         /// 위쪽 여백만 남기고 모두 채우는 가장 높은 단계입니다.
         public static let full: Identifier = "full"
+
+        /// 콘텐츠 높이만큼만 올라오는 단계입니다.
+        public static let content: Identifier = "content"
     }
 
     /// 단계의 이름입니다. 한 레이아웃 안에서 겹치지 않아야 합니다.
@@ -92,5 +95,15 @@ extension BottomSheetDetent {
     /// - Parameter topInset: 안전 영역 위쪽에서 남길 여백입니다. 기본값은 16pt입니다.
     public static func full(topInset: CGFloat = 16) -> BottomSheetDetent {
         return BottomSheetDetent(.full, anchor: .topInset(topInset))
+    }
+
+    /// 콘텐츠 높이만큼만 올라오는 단계입니다.
+    ///
+    /// 스크롤이 필요 없는 콘텐츠를 아래 여백 없이 딱 맞게 보일 때 씁니다. 콘텐츠가 화면보다 크면
+    /// 안전 영역 위쪽까지만 올라옵니다.
+    ///
+    /// - Parameter padding: 콘텐츠 아래에 더 남길 여백입니다. 기본값은 0입니다.
+    public static func content(padding: CGFloat = 0) -> BottomSheetDetent {
+        return BottomSheetDetent(.content, anchor: .content(padding: padding))
     }
 }

@@ -34,6 +34,16 @@ public enum BottomSheetAnchor: Hashable, Sendable {
     ///
     /// 끌어 올릴 손잡이까지 사라지므로 시트로 돌아올 조작을 화면이 따로 마련해야 합니다.
     case hidden
+
+    /// 콘텐츠가 실제로 차지하는 높이만큼만 올립니다. 카드 몇 장처럼 스크롤이 필요 없는 콘텐츠를
+    /// 아래 여백 없이 딱 맞게 보일 때 씁니다.
+    ///
+    /// 콘텐츠 높이는 이 타입이 알 수 없어 UI 계층(`BottomSheetController`, `bottomSheet(detent:)`)이
+    /// 재서 `BottomSheetLayout.resolvingContentHeight(_:)`로 `height`로 바꿔 넣습니다. 재기 전에는
+    /// `padding`만큼만 보이는 것으로 계산합니다. 콘텐츠가 바뀌면 다시 재서 자리를 옮깁니다.
+    ///
+    /// - Parameter padding: 콘텐츠 아래에 더 남길 여백입니다. 손잡이 높이는 UI 계층이 알아서 더합니다.
+    case content(padding: CGFloat = 0)
 }
 
 
@@ -65,8 +75,20 @@ extension BottomSheetAnchor {
 
         case .hidden:
             raw = availableHeight
+
+        case .content(let padding):
+            raw = availableHeight - padding
         }
 
         return min(max(raw, 0), max(availableHeight, 0))
+    }
+
+    /// 콘텐츠 높이를 재야 하는 anchor인지 나타냅니다.
+    public var isContentSized: Bool {
+        if case .content = self {
+            return true
+        }
+
+        return false
     }
 }

@@ -19,6 +19,8 @@
 		5C0000000000000000000028 /* SwiftUIBottomSheetDemoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000027 /* SwiftUIBottomSheetDemoScreen.swift */; };
 		5C0000000000000000000030 /* NativeSheetDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002F /* NativeSheetDemoView.swift */; };
 		5C0000000000000000000032 /* SwiftUINativeSheetDemoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000031 /* SwiftUINativeSheetDemoScreen.swift */; };
+		5C0000000000000000000034 /* ContentSizedSheetDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000033 /* ContentSizedSheetDemoView.swift */; };
+		5C0000000000000000000036 /* SwiftUIContentSizedSheetDemoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000035 /* SwiftUIContentSizedSheetDemoScreen.swift */; };
 		5C000000000000000000002D /* MapHostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002B /* MapHostViewModel.swift */; };
 		5C000000000000000000002E /* MapDemoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002C /* MapDemoViewModel.swift */; };
 /* End PBXBuildFile section */
@@ -35,6 +37,8 @@
 		5C0000000000000000000027 /* SwiftUIBottomSheetDemoScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIBottomSheetDemoScreen.swift; sourceTree = "<group>"; };
 		5C000000000000000000002F /* NativeSheetDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSheetDemoView.swift; sourceTree = "<group>"; };
 		5C0000000000000000000031 /* SwiftUINativeSheetDemoScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUINativeSheetDemoScreen.swift; sourceTree = "<group>"; };
+		5C0000000000000000000033 /* ContentSizedSheetDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentSizedSheetDemoView.swift; sourceTree = "<group>"; };
+		5C0000000000000000000035 /* SwiftUIContentSizedSheetDemoScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIContentSizedSheetDemoScreen.swift; sourceTree = "<group>"; };
 		5C0000000000000000000029 /* Demo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Demo.xcconfig; sourceTree = "<group>"; };
 		5C000000000000000000002B /* MapHostViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapHostViewModel.swift; sourceTree = "<group>"; };
 		5C000000000000000000002C /* MapDemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapDemoViewModel.swift; sourceTree = "<group>"; };
@@ -100,6 +104,8 @@
 				5C0000000000000000000027 /* SwiftUIBottomSheetDemoScreen.swift */,
 				5C000000000000000000002F /* NativeSheetDemoView.swift */,
 				5C0000000000000000000031 /* SwiftUINativeSheetDemoScreen.swift */,
+				5C0000000000000000000033 /* ContentSizedSheetDemoView.swift */,
+				5C0000000000000000000035 /* SwiftUIContentSizedSheetDemoScreen.swift */,
 			);
 			path = BottomSheet;
 			sourceTree = "<group>";
@@ -209,6 +215,8 @@
 				5C0000000000000000000028 /* SwiftUIBottomSheetDemoScreen.swift in Sources */,
 				5C0000000000000000000030 /* NativeSheetDemoView.swift in Sources */,
 				5C0000000000000000000032 /* SwiftUINativeSheetDemoScreen.swift in Sources */,
+				5C0000000000000000000034 /* ContentSizedSheetDemoView.swift in Sources */,
+				5C0000000000000000000036 /* SwiftUIContentSizedSheetDemoScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

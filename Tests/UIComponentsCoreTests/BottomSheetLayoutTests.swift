@@ -29,6 +29,45 @@ func anchorOffsetIsClampedToAvailableHeight() {
     #expect(BottomSheetAnchor.fraction(2).offset(in: availableHeight) == 0)
 }
 
+@Test("콘텐츠 단계는 재기 전에는 여백만큼만 보이는 것으로 계산해요")
+func contentAnchorBeforeMeasurementShowsPaddingOnly() {
+    #expect(BottomSheetAnchor.content().offset(in: availableHeight) == availableHeight)
+    #expect(BottomSheetAnchor.content(padding: 24).offset(in: availableHeight) == availableHeight - 24)
+    #expect(BottomSheetAnchor.content().isContentSized)
+    #expect(BottomSheetAnchor.height(10).isContentSized == false)
+}
+
+@Test("잰 높이를 넣으면 .content 단계만 .height로 바뀌고 이름과 다른 단계는 그대로예요")
+func resolvingContentHeightReplacesOnlyContentDetents() {
+    let layout = BottomSheetLayout(detents: [.hidden, .tip(), .content(padding: 12)])
+    #expect(layout.hasContentSizedDetent)
+
+    let resolved = layout.resolvingContentHeight(200)
+    #expect(resolved.hasContentSizedDetent == false)
+    #expect(resolved.detent(for: .content)?.anchor == .height(212))
+    #expect(resolved.detent(for: .tip)?.anchor == .height(96))
+    #expect(resolved.detent(for: .hidden)?.anchor == .hidden)
+    #expect(resolved.offset(for: resolved.detent(for: .content)!, availableHeight: availableHeight) == availableHeight - 212)
+
+    /// 원래 레이아웃에서 꺼낸 .content 단계 값을 넘겨도 같은 이름을 찾아 잰 높이로 계산해요.
+    #expect(resolved.offset(for: layout.detent(for: .content)!, availableHeight: availableHeight) == availableHeight - 212)
+
+    /// 레이아웃에 없는 이름은 넘긴 anchor를 그대로 써요.
+    #expect(resolved.offset(for: BottomSheetDetent("other", anchor: .height(100)), availableHeight: availableHeight) == availableHeight - 100)
+
+    /// .content가 없으면 자기 자신이에요.
+    #expect(BottomSheetLayout.standard.resolvingContentHeight(300) == .standard)
+}
+
+@Test("콘텐츠가 화면보다 크면 안전 영역 위로 나가지 않고, 음수 높이는 0으로 봐요")
+func resolvedContentDetentIsClamped() {
+    let tall = BottomSheetLayout(detents: [.content()]).resolvingContentHeight(5000)
+    #expect(tall.offset(for: tall.detents[0], availableHeight: availableHeight) == 0)
+
+    let negative = BottomSheetLayout(detents: [.content(padding: 8)]).resolvingContentHeight(-50)
+    #expect(negative.detents[0].anchor == .height(8))
+}
+
 // MARK: - Layout lookup
 
 @Test func standardLayoutResolvesEachDetent() {

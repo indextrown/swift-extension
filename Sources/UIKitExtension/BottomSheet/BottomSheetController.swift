@@ -126,7 +126,11 @@ public final class BottomSheetController: UIViewController {
     private var hasEnteredScreen = false
 
     private var contentOffsetObservation: NSKeyValueObservation?
+    private var contentSizeObservation: NSKeyValueObservation?
     private var scrollIndicatorWasVisible = true
+
+    /// `.content` 단계를 위해 잰 콘텐츠 높이입니다. 손잡이는 포함하지 않습니다. 아직 재지 않았으면 `nil`입니다.
+    private var measuredContentHeight: CGFloat?
 
     private enum DragMode {
         case sheet
@@ -185,6 +189,13 @@ public final class BottomSheetController: UIViewController {
         super.viewDidLayoutSubviews()
 
         self.layoutIfPossible()
+    }
+
+    public override func preferredContentSizeDidChange(forChildContentContainer container: UIContentContainer) {
+        super.preferredContentSizeDidChange(forChildContentContainer: container)
+
+        /// 콘텐츠 화면이 `preferredContentSize`를 바꾸면 `.content` 단계의 높이를 다시 잽니다.
+        self.measureContentIfNeeded()
     }
 
     public override func viewSafeAreaInsetsDidChange() {
@@ -276,7 +287,7 @@ public final class BottomSheetController: UIViewController {
     ///   - identifier: 옮겨 갈 단계의 이름입니다.
     ///   - animated: 애니메이션 여부입니다.
     public func move(to identifier: BottomSheetDetent.Identifier, animated: Bool) {
-        guard let detent = self.layout.detent(for: identifier) else { return }
+        guard let detent = self.resolvedLayout.detent(for: identifier) else { return }
 
         guard self.hasEnteredScreen else {
             self.updateDetent(detent)
@@ -296,6 +307,17 @@ public final class BottomSheetController: UIViewController {
         self.animate(to: detent, velocity: 0)
     }
 
+    /// 콘텐츠 높이가 바뀌었다고 알립니다. `.content` 단계가 있을 때만 의미가 있습니다.
+    ///
+    /// `preferredContentSize`가 바뀌거나 따라가는 스크롤뷰의 `contentSize`가 바뀌면 자동으로 다시 잽니다.
+    /// 그 밖의 방법으로 콘텐츠 높이가 바뀌었을 때(예: 스택에 카드를 더했을 때) 이 메서드를 불러 주면
+    /// 다시 재서 `.content` 단계에 머물고 있으면 스프링으로 자리를 옮깁니다.
+    ///
+    /// - Complexity: 콘텐츠의 Auto Layout 압축 크기를 한 번 계산합니다.
+    public func invalidateContentHeight() {
+        self.measureContentIfNeeded()
+    }
+
     /// 시트가 따라갈 스크롤뷰를 정합니다.
     ///
     /// 시트가 가장 높은 단계에 있지 않으면 스크롤 대신 시트가 움직이고, 가장 높은 단계에서
@@ -307,9 +329,17 @@ public final class BottomSheetController: UIViewController {
     public func track(scrollView: UIScrollView?) {
         self.restoreScrollIndicator()
         self.contentOffsetObservation = nil
+        self.contentSizeObservation = nil
         self.trackedScrollView = scrollView
 
         guard let scrollView else { return }
+
+        /// 행이 늘거나 줄면 `.content` 단계의 높이를 다시 잽니다.
+        self.contentSizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                self?.measureContentIfNeeded()
+            }
+        }
 
         /// KVO 알림은 `contentOffset`을 바꾼 스레드에서 오고, UIScrollView는 메인 스레드에서만
         /// 바뀝니다. 그래도 클로저 자체는 격리를 모르므로 메인 액터임을 확인하고 들어갑니다.
@@ -346,7 +376,7 @@ public final class BottomSheetController: UIViewController {
             return bottom - safeTop
         }
 
-        return self.layout.offset(for: detent, availableHeight: self.availableHeight)
+        return self.resolvedLayout.offset(for: detent, availableHeight: self.availableHeight)
     }
 
 
@@ -365,7 +395,7 @@ public final class BottomSheetController: UIViewController {
     }
 
     private var highestOffset: CGFloat {
-        let detent = self.layout.highestDetent(
+        let detent = self.resolvedLayout.highestDetent(
             availableHeight: self.availableHeight,
             among: self.allowedDetents
         )
@@ -400,8 +430,8 @@ public final class BottomSheetController: UIViewController {
     private func updateStaticHeightIfNeeded() {
         guard let heightConstraint = self.heightConstraint, self.availableHeight > 0 else { return }
 
-        let highest = self.layout.offset(
-            for: self.layout.highestDetent(availableHeight: self.availableHeight),
+        let highest = self.resolvedLayout.offset(
+            for: self.resolvedLayout.highestDetent(availableHeight: self.availableHeight),
             availableHeight: self.availableHeight
         )
         let height = max(self.availableHeight - highest, 0) + self.bottomInset + self.behavior.overDragLimit
@@ -498,7 +528,7 @@ public final class BottomSheetController: UIViewController {
         self.surfaceView.handleView.accessibilityValue = self.currentDetent.identifier.rawValue
 
         self.surfaceView.handleView.onIncrement = { [weak self] in
-            guard let self, let above = self.layout.detent(
+            guard let self, let above = self.resolvedLayout.detent(
                 above: self.currentDetent,
                 availableHeight: self.referenceHeight,
                 among: self.allowedDetents
@@ -508,7 +538,7 @@ public final class BottomSheetController: UIViewController {
         }
 
         self.surfaceView.handleView.onDecrement = { [weak self] in
-            guard let self, let below = self.layout.detent(
+            guard let self, let below = self.resolvedLayout.detent(
                 below: self.currentDetent,
                 availableHeight: self.referenceHeight,
                 among: self.allowedDetents
@@ -525,6 +555,7 @@ public final class BottomSheetController: UIViewController {
     private func layoutIfPossible() {
         guard self.view.window != nil, self.topConstraint != nil, self.availableHeight > 0 else { return }
 
+        self.measureContentIfNeeded()
         self.updateStaticHeightIfNeeded()
         self.updateContentSafeAreaIfNeeded()
 
@@ -589,12 +620,12 @@ public final class BottomSheetController: UIViewController {
 
     /// 머무는 단계가 허용 목록을 벗어났으면 가장 가까운 허용 단계로 옮깁니다.
     private func applyAllowedDetents() {
-        let candidates = self.layout.detents(among: self.allowedDetents)
+        let candidates = self.resolvedLayout.detents(among: self.allowedDetents)
 
         guard candidates.contains(self.currentDetent) == false else { return }
 
-        let target = self.layout.nearestDetent(
-            to: self.layout.offset(for: self.currentDetent, availableHeight: self.referenceHeight),
+        let target = self.resolvedLayout.nearestDetent(
+            to: self.resolvedLayout.offset(for: self.currentDetent, availableHeight: self.referenceHeight),
             availableHeight: self.referenceHeight,
             among: self.allowedDetents
         )
@@ -604,8 +635,8 @@ public final class BottomSheetController: UIViewController {
 
     /// 레이아웃이 바뀌면 같은 이름의 단계를 찾고, 없으면 지금 위치에 가장 가까운 단계로 옮깁니다.
     private func applyLayoutChange() {
-        let target = self.layout.detent(for: self.currentDetent.identifier)
-            ?? self.layout.nearestDetent(
+        let target = self.resolvedLayout.detent(for: self.currentDetent.identifier)
+            ?? self.resolvedLayout.nearestDetent(
                 to: self.currentOffset,
                 availableHeight: self.referenceHeight,
                 among: self.allowedDetents
@@ -629,6 +660,79 @@ public final class BottomSheetController: UIViewController {
         self.surfaceView.setShadowVisible(detent.anchor != .hidden)
         self.surfaceView.handleView.accessibilityValue = detent.identifier.rawValue
         self.delegate?.bottomSheet(self, didChangeDetent: detent)
+    }
+}
+
+
+
+// MARK: - Content Sizing
+
+extension BottomSheetController {
+
+    /// `.content` 단계가 있으면 잰 콘텐츠 높이를 반영한 레이아웃입니다. 위치 계산은 모두 이것으로 합니다.
+    private var resolvedLayout: BottomSheetLayout {
+        guard self.layout.hasContentSizedDetent else { return self.layout }
+
+        return self.layout.resolvingContentHeight(self.handleHeight + (self.measuredContentHeight ?? 0))
+    }
+
+    private var handleHeight: CGFloat {
+        return self.appearance.showsGrabber ? self.appearance.handleAreaHeight : 0
+    }
+
+    /// 콘텐츠 높이를 다시 재고, 달라졌으면 시트 높이와 `.content` 단계의 자리를 다시 잡습니다.
+    ///
+    /// 처음 자리를 잡기 전에는 값만 기억해 두고, 자리를 잡은 뒤 `.content` 단계에 머물고 있으면
+    /// 스프링으로 새 자리에 옮깁니다. 끌고 있는 동안은 건드리지 않습니다.
+    private func measureContentIfNeeded() {
+        guard self.layout.hasContentSizedDetent else { return }
+
+        let containerWidth = self.surfaceView.contentContainerView.bounds.width
+        let width = containerWidth > 0 ? containerWidth : (self.hostView?.bounds.width ?? 0)
+
+        guard width > 0, let measured = self.measureContentHeight(fittingWidth: width) else { return }
+        guard abs((self.measuredContentHeight ?? -1) - measured) > 0.5 else { return }
+
+        self.measuredContentHeight = measured
+        self.updateStaticHeightIfNeeded()
+
+        guard self.hasEnteredScreen,
+              self.isDragging == false,
+              self.currentDetent.anchor.isContentSized else { return }
+
+        let target = self.offset(for: self.currentDetent)
+
+        guard abs(self.currentOffset - target) > 0.5 else { return }
+
+        self.animate(to: self.currentDetent, velocity: 0)
+    }
+
+    /// 콘텐츠 높이를 잽니다. 손잡이는 포함하지 않습니다.
+    ///
+    /// 우선순위는 `preferredContentSize` → 스크롤뷰의 `contentSize` → Auto Layout 압축 크기입니다.
+    /// 압축 크기는 콘텐츠 View 안의 제약이 위에서 아래로 이어져 있을 때 정확합니다. 잴 수 없으면 `nil`입니다.
+    private func measureContentHeight(fittingWidth width: CGFloat) -> CGFloat? {
+        let content = self.contentViewController
+
+        if content.preferredContentSize.height > 0 {
+            return content.preferredContentSize.height
+        }
+
+        if let scrollView = self.trackedScrollView ?? (content.viewIfLoaded as? UIScrollView) {
+            let height = scrollView.contentSize.height + scrollView.contentInset.top + scrollView.contentInset.bottom
+
+            return height > 0 ? height : nil
+        }
+
+        guard let view = content.viewIfLoaded else { return nil }
+
+        let size = view.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+
+        return size.height > 0 ? size.height : nil
     }
 }
 
@@ -667,7 +771,7 @@ extension BottomSheetController {
     private func backdropAlpha(for offset: CGFloat) -> CGFloat {
         guard let backdrop = self.appearance.backdrop, self.availableHeight > 0 else { return 0 }
 
-        let progress = self.layout.backdropProgress(
+        let progress = self.resolvedLayout.backdropProgress(
             at: offset,
             availableHeight: self.availableHeight,
             largestUndimmedDetent: backdrop.largestUndimmedDetent
@@ -689,11 +793,11 @@ extension BottomSheetController {
         let target: BottomSheetDetent
 
         if let identifier = self.appearance.backdrop?.largestUndimmedDetent,
-           let detent = self.layout.detent(for: identifier),
-           self.layout.detents(among: self.allowedDetents).contains(detent) {
+           let detent = self.resolvedLayout.detent(for: identifier),
+           self.resolvedLayout.detents(among: self.allowedDetents).contains(detent) {
             target = detent
         } else {
-            target = self.layout.lowestDetent(
+            target = self.resolvedLayout.lowestDetent(
                 availableHeight: self.availableHeight,
                 among: self.allowedDetents
             )
@@ -756,7 +860,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
                     return
                 }
 
-                let resisted = self.layout.resistedOffset(
+                let resisted = self.resolvedLayout.resistedOffset(
                     proposed,
                     availableHeight: self.availableHeight,
                     among: self.allowedDetents,
@@ -785,7 +889,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
 
             guard self.dragMode == .sheet else { return }
 
-            var target = self.layout.targetDetent(
+            var target = self.resolvedLayout.targetDetent(
                 releasedAt: self.currentOffset,
                 velocity: velocity,
                 availableHeight: self.availableHeight,
@@ -796,7 +900,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
             var identifier = target.identifier
             self.delegate?.bottomSheet(self, willEndDraggingWithVelocity: velocity, targetDetent: &identifier)
 
-            if identifier != target.identifier, let overridden = self.layout.detent(for: identifier) {
+            if identifier != target.identifier, let overridden = self.resolvedLayout.detent(for: identifier) {
                 target = overridden
             }
 

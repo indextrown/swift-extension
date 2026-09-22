@@ -81,19 +81,64 @@ extension BottomSheetLayout {
 
 
 
+// MARK: - Content Sizing
+
+extension BottomSheetLayout {
+
+    /// 콘텐츠 높이를 재야 하는 단계(`.content`)가 하나라도 있는지 나타냅니다.
+    ///
+    /// UI 계층은 이 값이 `true`일 때만 콘텐츠를 재고 `resolvingContentHeight(_:)`를 씁니다.
+    ///
+    /// - Complexity: O(n)입니다.
+    public var hasContentSizedDetent: Bool {
+        return self.detents.contains { $0.anchor.isContentSized }
+    }
+
+    /// `.content` 단계를 잰 높이로 바꾼 레이아웃을 돌려줍니다.
+    ///
+    /// 각 `.content(padding:)`은 같은 이름의 `.height(contentHeight + padding)`이 되고, 다른 단계는
+    /// 그대로입니다. 위치 계산은 모두 이 결과로 하면 되므로 계산 함수마다 콘텐츠 높이를 넘길 필요가 없습니다.
+    /// `offset(for:availableHeight:)`는 이름으로 레이아웃의 정의를 먼저 찾으므로, 원래 레이아웃에서 꺼낸
+    /// `.content` 단계 값을 그대로 넘겨도 잰 높이로 계산됩니다.
+    ///
+    /// - Parameter contentHeight: UI 계층이 잰 콘텐츠 높이입니다. 손잡이 높이를 포함해서 넘깁니다.
+    /// - Returns: `.content` 단계가 없으면 자기 자신입니다.
+    /// - Complexity: O(n)입니다.
+    public func resolvingContentHeight(_ contentHeight: CGFloat) -> BottomSheetLayout {
+        guard self.hasContentSizedDetent else { return self }
+
+        var resolved = self
+        resolved.detents = self.detents.map { detent in
+            guard case .content(let padding) = detent.anchor else { return detent }
+
+            return BottomSheetDetent(detent.identifier, anchor: .height(max(contentHeight, 0) + padding))
+        }
+
+        return resolved
+    }
+}
+
+
+
 // MARK: - Offset
 
 extension BottomSheetLayout {
 
     /// 단계에 해당하는 offset을 계산합니다.
     ///
+    /// 같은 이름의 단계가 이 레이아웃에 있으면 **레이아웃의 정의**를 따릅니다. 그래서
+    /// `resolvingContentHeight(_:)`로 `.content`를 `.height`로 바꾼 레이아웃에, 아직 `.content`를
+    /// 들고 있는 단계 값을 넘겨도 잰 높이로 계산됩니다. 레이아웃에 없는 이름이면 넘긴 단계의 anchor를 그대로 씁니다.
+    ///
     /// - Parameters:
     ///   - detent: 위치를 구할 단계입니다.
     ///   - availableHeight: 시트가 쓸 수 있는 안전 영역의 높이입니다.
     /// - Returns: 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리입니다.
-    /// - Complexity: O(1)입니다.
+    /// - Complexity: O(n)입니다. n은 단계 개수입니다.
     public func offset(for detent: BottomSheetDetent, availableHeight: CGFloat) -> CGFloat {
-        return detent.anchor.offset(in: availableHeight)
+        let anchor = self.detent(for: detent.identifier)?.anchor ?? detent.anchor
+
+        return anchor.offset(in: availableHeight)
     }
 
     /// 가장 높은 단계, 즉 offset이 가장 작은 단계입니다.

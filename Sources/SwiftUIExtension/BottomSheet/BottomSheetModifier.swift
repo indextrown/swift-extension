@@ -108,6 +108,9 @@ struct BottomSheetOverlay<Content: View>: View {
     /// 손가락이 시트를 움직이는 동안 스크롤을 잠근 상태인지 나타냅니다.
     @State private var isScrollLockedByDrag = false
 
+    /// 콘텐츠 View가 스스로 차지하는 높이입니다. `.content` 단계에 씁니다. 손잡이는 포함하지 않습니다.
+    @State private var measuredContentHeight: CGFloat?
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private struct Metrics: Equatable {
@@ -180,6 +183,13 @@ struct BottomSheetOverlay<Content: View>: View {
 
             self.onOffsetChange?(newValue)
         }
+        .onPreferenceChange(BottomSheetContentHeightKey.self) { newValue in
+            self.measuredContentHeight = newValue
+        }
+        .onChange(of: self.contentHeightForLayout) { _, _ in
+            /// 콘텐츠 높이가 바뀌면 `.content` 단계에 머무는 시트가 새 높이로 옮겨 갑니다.
+            self.applyCurrentDetentIfNeeded(animated: true)
+        }
     }
 
 
@@ -213,6 +223,12 @@ struct BottomSheetOverlay<Content: View>: View {
                 }
 
                 self.content
+                    /// 콘텐츠가 스스로 차지하는 높이를 잽니다. 늘리는 `frame` 안쪽에 붙여야 콘텐츠 본래 크기가 잡혀요.
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: BottomSheetContentHeightKey.self, value: proxy.size.height)
+                        }
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     /// 시트 바닥은 탭바 뒤까지 이어지므로 콘텐츠는 그만큼 위에서 끝나야 가리지 않습니다.
                     .padding(.bottom, self.metrics.bottomInset)
@@ -251,7 +267,7 @@ struct BottomSheetOverlay<Content: View>: View {
     @ViewBuilder
     private var backdrop: some View {
         if let backdrop = self.style.backdrop, self.metrics.available > 0 {
-            let progress = self.layout.backdropProgress(
+            let progress = self.resolvedLayout.backdropProgress(
                 at: self.offset,
                 availableHeight: self.metrics.available,
                 largestUndimmedDetent: backdrop.largestUndimmedDetent
@@ -273,7 +289,26 @@ struct BottomSheetOverlay<Content: View>: View {
     // MARK: - Geometry
 
     private var currentDetent: BottomSheetDetent {
-        return self.layout.detent(for: self.detent) ?? self.layout.detents[0]
+        return self.resolvedLayout.detent(for: self.detent) ?? self.resolvedLayout.detents[0]
+    }
+
+    /// `.content` 단계에 쓸 콘텐츠 높이입니다. `BottomSheetScrollView`가 있으면 그 안쪽 콘텐츠 높이를,
+    /// 없으면 콘텐츠 View가 스스로 차지한 높이를 씁니다. 스크롤뷰는 늘 주어진 높이를 다 채워 직접 재면 안 돼요.
+    private var contentHeightForLayout: CGFloat? {
+        if self.scrollState.isPresent {
+            return self.scrollState.contentHeight > 0 ? self.scrollState.contentHeight : nil
+        }
+
+        return self.measuredContentHeight
+    }
+
+    /// `.content` 단계가 있으면 잰 콘텐츠 높이를 반영한 레이아웃입니다. 위치 계산은 모두 이것으로 합니다.
+    private var resolvedLayout: BottomSheetLayout {
+        guard self.layout.hasContentSizedDetent else { return self.layout }
+
+        let handle = self.style.showsGrabber ? self.style.handleAreaHeight : 0
+
+        return self.layout.resolvingContentHeight(handle + (self.contentHeightForLayout ?? 0))
     }
 
     /// 단계를 고를 때 쓰는 높이입니다. 크기를 재기 전에는 임시값을 씁니다.
@@ -287,11 +322,11 @@ struct BottomSheetOverlay<Content: View>: View {
             return self.metrics.available + self.metrics.bottomInset
         }
 
-        return self.layout.offset(for: detent, availableHeight: self.metrics.available)
+        return self.resolvedLayout.offset(for: detent, availableHeight: self.metrics.available)
     }
 
     private var highestOffset: CGFloat {
-        let detent = self.layout.highestDetent(
+        let detent = self.resolvedLayout.highestDetent(
             availableHeight: self.metrics.available,
             among: self.allowedDetents
         )
@@ -340,8 +375,8 @@ struct BottomSheetOverlay<Content: View>: View {
         }
     }
 
-    /// 크기가 바뀌었을 때 현재 단계의 위치를 다시 맞춥니다. 끌고 있는 동안은 건드리지 않습니다.
-    private func applyCurrentDetentIfNeeded() {
+    /// 크기나 콘텐츠 높이가 바뀌었을 때 현재 단계의 위치를 다시 맞춥니다. 끌고 있는 동안은 건드리지 않습니다.
+    private func applyCurrentDetentIfNeeded(animated: Bool = false) {
         guard self.hasEntered else { return self.enterIfPossible() }
         guard self.drag == nil else { return }
 
@@ -349,12 +384,19 @@ struct BottomSheetOverlay<Content: View>: View {
 
         guard abs(self.offset - target) > 0.5 else { return }
 
-        self.offset = target
+        guard animated else {
+            self.offset = target
+            return
+        }
+
+        withAnimation(self.animation(velocity: 0, distance: target - self.offset)) {
+            self.offset = target
+        }
     }
 
     /// 바인딩이 바뀌면 그 단계로 옮깁니다. 이미 그 자리면 아무 일도 하지 않습니다.
     private func moveIfNeeded(to identifier: BottomSheetDetent.Identifier) {
-        guard self.hasEntered, let detent = self.layout.detent(for: identifier) else { return }
+        guard self.hasEntered, let detent = self.resolvedLayout.detent(for: identifier) else { return }
 
         let target = self.targetOffset(for: detent)
 
@@ -367,12 +409,12 @@ struct BottomSheetOverlay<Content: View>: View {
 
     /// 머무는 단계가 허용 목록을 벗어났으면 가장 가까운 허용 단계로 옮깁니다.
     private func applyAllowedDetents() {
-        let candidates = self.layout.detents(among: self.allowedDetents)
+        let candidates = self.resolvedLayout.detents(among: self.allowedDetents)
 
         guard candidates.contains(self.currentDetent) == false else { return }
 
-        let target = self.layout.nearestDetent(
-            to: self.layout.offset(for: self.currentDetent, availableHeight: self.referenceHeight),
+        let target = self.resolvedLayout.nearestDetent(
+            to: self.resolvedLayout.offset(for: self.currentDetent, availableHeight: self.referenceHeight),
             availableHeight: self.referenceHeight,
             among: self.allowedDetents
         )
@@ -384,8 +426,8 @@ struct BottomSheetOverlay<Content: View>: View {
 
     private func step(up: Bool) {
         let next = up
-            ? self.layout.detent(above: self.currentDetent, availableHeight: self.referenceHeight, among: self.allowedDetents)
-            : self.layout.detent(below: self.currentDetent, availableHeight: self.referenceHeight, among: self.allowedDetents)
+            ? self.resolvedLayout.detent(above: self.currentDetent, availableHeight: self.referenceHeight, among: self.allowedDetents)
+            : self.resolvedLayout.detent(below: self.currentDetent, availableHeight: self.referenceHeight, among: self.allowedDetents)
 
         guard let next else { return }
 
@@ -398,11 +440,11 @@ struct BottomSheetOverlay<Content: View>: View {
         let target: BottomSheetDetent.Identifier
 
         if let identifier = backdrop.largestUndimmedDetent,
-           let detent = self.layout.detent(for: identifier),
-           self.layout.detents(among: self.allowedDetents).contains(detent) {
+           let detent = self.resolvedLayout.detent(for: identifier),
+           self.resolvedLayout.detents(among: self.allowedDetents).contains(detent) {
             target = identifier
         } else {
-            target = self.layout.lowestDetent(
+            target = self.resolvedLayout.lowestDetent(
                 availableHeight: self.referenceHeight,
                 among: self.allowedDetents
             ).identifier
@@ -471,7 +513,7 @@ struct BottomSheetOverlay<Content: View>: View {
 
         if state.isSheet {
             let proposed = state.startOffset + (value.translation.height - state.baseline)
-            let resisted = self.layout.resistedOffset(
+            let resisted = self.resolvedLayout.resistedOffset(
                 proposed,
                 availableHeight: self.metrics.available,
                 among: self.allowedDetents,
@@ -519,7 +561,7 @@ struct BottomSheetOverlay<Content: View>: View {
 
         /// 마지막 이동이 `onChanged` 없이 `onEnded`에만 실려 오기도 합니다. 손을 뗀 위치는
         /// 마지막으로 그린 offset이 아니라 `onEnded`의 translation으로 다시 계산합니다.
-        let releasedAt = self.layout.resistedOffset(
+        let releasedAt = self.resolvedLayout.resistedOffset(
             state.startOffset + (value.translation.height - state.baseline),
             availableHeight: self.metrics.available,
             among: self.allowedDetents,
@@ -528,7 +570,7 @@ struct BottomSheetOverlay<Content: View>: View {
         self.offset = releasedAt
 
         let velocity = value.velocity.height
-        let target = self.layout.targetDetent(
+        let target = self.resolvedLayout.targetDetent(
             releasedAt: releasedAt,
             velocity: velocity,
             availableHeight: self.metrics.available,
@@ -579,6 +621,16 @@ private struct BottomSheetOffsetReporter: ViewModifier, Animatable {
 }
 
 private struct BottomSheetReportedOffsetKey: PreferenceKey {
+
+    static let defaultValue: CGFloat? = nil
+
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        value = nextValue() ?? value
+    }
+}
+
+/// 콘텐츠 View가 스스로 차지하는 높이입니다.
+private struct BottomSheetContentHeightKey: PreferenceKey {
 
     static let defaultValue: CGFloat? = nil
 
