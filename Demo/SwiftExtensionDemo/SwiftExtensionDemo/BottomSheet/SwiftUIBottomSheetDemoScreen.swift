@@ -52,10 +52,11 @@ struct SwiftUIBottomSheetDemoScreen: View {
                 Map(position: self.$cameraPosition) {
                     UserAnnotation()
                 }
-                /// 시트가 가린 만큼 안전 영역을 줄이면 `.region`이 보이는 영역 안에 들어옵니다.
-                /// 끄는 동안 매 프레임 바꾸면 지도가 흔들려서 단계 기준으로만 넣습니다.
+                /// 시트가 가린 만큼 안전 영역을 줄이면 MapKit이 보이는 영역 가운데로 카메라를 다시 잡습니다.
+                /// `onOffsetChange`가 준 offset에 묶여 있어 끄는 동안은 매 프레임, 도착할 때는 시트와 같은
+                /// 애니메이션으로 따라갑니다. UIKit 판의 `didChangeCoveredHeight`와 같은 역할이에요.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: self.coveredHeight(available: available, dragging: false))
+                    Color.clear.frame(height: coveredBySheet)
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -116,13 +117,12 @@ struct SwiftUIBottomSheetDemoScreen: View {
         }
     }
 
-    /// 시트가 가리고 있는 높이입니다. `dragging`이 `true`면 끄는 동안의 값도 쓰고, `false`면 단계 위치만 씁니다.
-    private func coveredHeight(available: CGFloat, dragging: Bool = true) -> CGFloat {
+    /// 시트가 가리고 있는 높이입니다. `onOffsetChange`가 아직 안 왔으면 단계 위치로 계산합니다.
+    private func coveredHeight(available: CGFloat) -> CGFloat {
         let detentValue = Self.layout.detent(for: self.detent) ?? Self.layout.detents[0]
         let detentOffset = Self.layout.offset(for: detentValue, availableHeight: available)
-        let offset = dragging ? (self.sheetOffset ?? detentOffset) : detentOffset
 
-        return max(available - offset, 0)
+        return max(available - (self.sheetOffset ?? detentOffset), 0)
     }
 
     private func centerOnUser(available: CGFloat) {
