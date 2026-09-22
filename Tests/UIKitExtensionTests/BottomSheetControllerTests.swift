@@ -13,14 +13,16 @@ private struct SheetFixture {
 
     init(
         layout: BottomSheetLayout = .standard,
-        initialDetent: BottomSheetDetent.Identifier = .tip
+        initialDetent: BottomSheetDetent.Identifier = .tip,
+        contentMode: BottomSheetContentMode = .static
     ) {
         self.content = UIViewController()
         self.sheet = BottomSheetController(
             contentViewController: self.content,
             layout: layout,
             initialDetent: initialDetent,
-            behavior: BottomSheetBehavior(animatesInitialAppearance: false)
+            behavior: BottomSheetBehavior(animatesInitialAppearance: false),
+            contentMode: contentMode
         )
         self.host = UIViewController()
         self.window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -58,13 +60,30 @@ private struct SheetFixture {
     #expect(fixture.sheet.view.isHidden == false)
 }
 
-@Test("시트 바닥은 부모 View의 바닥에 붙어 탭바 뒤까지 이어져요") @MainActor
-func sheetExtendsToHostBottom() {
-    let fixture = SheetFixture()
+@Test("fitToBounds에서는 시트 바닥이 부모 View 바닥에 붙어 탭바 뒤까지 이어져요") @MainActor
+func fitToBoundsSheetExtendsToHostBottom() {
+    let fixture = SheetFixture(contentMode: .fitToBounds)
 
     #expect(fixture.sheet.view.frame.maxY == fixture.host.view.bounds.maxY)
     #expect(fixture.sheet.view.frame.minY
             == fixture.host.view.safeAreaLayoutGuide.layoutFrame.minY + fixture.offset(for: .tip))
+}
+
+@Test("static에서는 시트 높이가 가장 높은 단계 기준으로 고정돼요") @MainActor
+func staticSheetKeepsHeightAcrossDetents() {
+    let fixture = SheetFixture(contentMode: .static)
+    let host = fixture.host.view!
+    let bottomInset = host.bounds.maxY - host.safeAreaLayoutGuide.layoutFrame.maxY
+    let expected = fixture.availableHeight - fixture.offset(for: .full) + bottomInset + fixture.sheet.behavior.overDragLimit
+
+    #expect(fixture.sheet.view.frame.height == expected)
+    #expect(fixture.sheet.view.frame.minY
+            == host.safeAreaLayoutGuide.layoutFrame.minY + fixture.offset(for: .tip))
+
+    fixture.sheet.move(to: .full, animated: false)
+
+    #expect(fixture.sheet.view.frame.height == expected)
+    #expect(fixture.sheet.view.frame.maxY == host.bounds.maxY + fixture.sheet.behavior.overDragLimit)
 }
 
 @Test @MainActor func moveWithoutAnimationJumpsToDetent() {
@@ -184,3 +203,28 @@ func hiddenDetentIgnoresShortenedHost() {
     #expect(top > fixture.host.view.bounds.maxY)
 }
 #endif
+
+@Test("static에서는 콘텐츠 안전 영역 바닥이 부모 안전 영역 바닥에 맞춰져요") @MainActor
+func staticContentSafeAreaEndsAtHostSafeBottom() {
+    let fixture = SheetFixture(contentMode: .static)
+
+    // 불투명 탭바가 부모 View를 줄인 상황을 흉내내요. 창 안전 영역은 그대로예요.
+    fixture.host.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844 - 83)
+    fixture.host.view.layoutIfNeeded()
+    fixture.sheet.view.layoutIfNeeded()
+
+    let host = fixture.host.view!
+    let window = fixture.window
+    let overDrag = fixture.sheet.behavior.overDragLimit
+    let desired = (host.bounds.maxY - host.safeAreaLayoutGuide.layoutFrame.maxY) + overDrag
+    let inherited = max((host.bounds.maxY + overDrag) - (window.bounds.maxY - window.safeAreaInsets.bottom), 0)
+
+    #expect(fixture.content.additionalSafeAreaInsets.bottom == max(desired - inherited, 0))
+    #expect(fixture.content.additionalSafeAreaInsets.bottom > 0)
+}
+
+@Test @MainActor func fitToBoundsAddsNoSafeArea() {
+    let fixture = SheetFixture(contentMode: .fitToBounds)
+
+    #expect(fixture.content.additionalSafeAreaInsets.bottom == 0)
+}

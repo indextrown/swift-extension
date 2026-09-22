@@ -45,6 +45,9 @@ public final class BottomSheetController: UIViewController {
     /// 시트가 손을 따라오고 단계 사이를 옮기는 방식입니다.
     public let behavior: BottomSheetBehavior
 
+    /// 시트가 움직일 때 콘텐츠 높이를 다루는 방식입니다.
+    public let contentMode: BottomSheetContentMode
+
     /// 시트의 움직임을 받는 대리자입니다.
     public weak var delegate: BottomSheetControllerDelegate?
 
@@ -91,8 +94,16 @@ public final class BottomSheetController: UIViewController {
     private let surfaceView: BottomSheetSurfaceView
     private var backdropView: UIView?
 
+    /// 부모 안전 영역에 붙어 있는 보이지 않는 View입니다. 부모 크기나 안전 영역이 바뀌어 이 View가
+    /// 다시 배치되면 시트도 자리와 높이를 다시 계산합니다. `static` 모드에서는 시트 자신의 프레임이
+    /// 바뀌지 않아 `viewDidLayoutSubviews`가 오지 않으므로 이 경로가 필요합니다.
+    private var hostLayoutObserver: BottomSheetHostLayoutObserverView?
+
     /// 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리이며 이 값 하나로 위치를 정합니다.
     private var topConstraint: NSLayoutConstraint?
+
+    /// `static` 모드에서 시트 높이를 고정하는 제약입니다. `fitToBounds`에서는 `nil`입니다.
+    private var heightConstraint: NSLayoutConstraint?
 
     private lazy var panGesture = UIPanGestureRecognizer(
         target: self,
@@ -131,17 +142,20 @@ public final class BottomSheetController: UIViewController {
     ///   - initialDetent: 처음 멈출 단계의 이름입니다. 레이아웃에 없으면 첫 단계를 씁니다.
     ///   - appearance: 표시 속성입니다.
     ///   - behavior: 움직임 값입니다.
+    ///   - contentMode: 콘텐츠 높이를 다루는 방식입니다. 기본은 끌 때 부드러운 `static`입니다.
     public init(
         contentViewController: UIViewController,
         layout: BottomSheetLayout = .standard,
         initialDetent: BottomSheetDetent.Identifier = .tip,
         appearance: BottomSheetAppearance = .default,
-        behavior: BottomSheetBehavior = .default
+        behavior: BottomSheetBehavior = .default,
+        contentMode: BottomSheetContentMode = .static
     ) {
         self.contentViewController = contentViewController
         self.layout = layout
         self.appearance = appearance
         self.behavior = behavior
+        self.contentMode = contentMode
         self.currentDetent = layout.detent(for: initialDetent) ?? layout.detents[0]
         self.surfaceView = BottomSheetSurfaceView(appearance: appearance)
         super.init(nibName: nil, bundle: nil)
@@ -197,6 +211,8 @@ public final class BottomSheetController: UIViewController {
             self.installBackdrop(backdrop, in: host)
         }
 
+        self.installHostLayoutObserver(in: host)
+
         self.view.translatesAutoresizingMaskIntoConstraints = false
         host.addSubview(self.view)
 
@@ -208,11 +224,21 @@ public final class BottomSheetController: UIViewController {
         NSLayoutConstraint.activate([
             topConstraint,
             self.view.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-            self.view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
-
-            /// 배경이 탭바와 홈 인디케이터 뒤까지 이어져야 아래가 잘린 것처럼 보이지 않습니다.
-            self.view.bottomAnchor.constraint(equalTo: host.bottomAnchor)
+            self.view.trailingAnchor.constraint(equalTo: host.trailingAnchor)
         ])
+
+        switch self.contentMode {
+        case .static:
+            /// 높이를 고정해 끄는 동안 콘텐츠가 다시 배치되지 않게 합니다. 값은 배치가 끝나 안전 영역을
+            /// 알 수 있을 때 `updateStaticHeightIfNeeded()`가 채웁니다.
+            let heightConstraint = self.view.heightAnchor.constraint(equalToConstant: 0)
+            heightConstraint.isActive = true
+            self.heightConstraint = heightConstraint
+
+        case .fitToBounds:
+            /// 배경이 탭바와 홈 인디케이터 뒤까지 이어져야 아래가 잘린 것처럼 보이지 않습니다.
+            self.view.bottomAnchor.constraint(equalTo: host.bottomAnchor).isActive = true
+        }
 
         self.didMove(toParent: parent)
     }
@@ -227,8 +253,11 @@ public final class BottomSheetController: UIViewController {
         self.willMove(toParent: nil)
         self.backdropView?.removeFromSuperview()
         self.backdropView = nil
+        self.hostLayoutObserver?.removeFromSuperview()
+        self.hostLayoutObserver = nil
         self.view.removeFromSuperview()
         self.topConstraint = nil
+        self.heightConstraint = nil
         self.removeFromParent()
 
         self.hasEnteredScreen = false
@@ -343,6 +372,89 @@ public final class BottomSheetController: UIViewController {
         self.updateBackdrop(for: offset)
     }
 
+    /// 안전 영역 아래쪽 여백입니다. 탭바와 홈 인디케이터 높이입니다.
+    private var bottomInset: CGFloat {
+        guard let host = self.hostView else { return 0 }
+
+        return max(host.bounds.maxY - host.safeAreaLayoutGuide.layoutFrame.maxY, 0)
+    }
+
+    /// `static` 모드의 시트 높이를 다시 계산합니다.
+    ///
+    /// 가장 높은 단계에서 보이는 높이에, 탭바 뒤까지 이어질 여백과 한계를 넘어 끌 때 바닥이 뜨지 않을
+    /// 여유(`overDragLimit`)를 더합니다. 허용 목록이 아니라 레이아웃 전체의 가장 높은 단계를 쓰므로
+    /// 허용 목록이 바뀌어도 콘텐츠 높이는 그대로입니다.
+    private func updateStaticHeightIfNeeded() {
+        guard let heightConstraint = self.heightConstraint, self.availableHeight > 0 else { return }
+
+        let highest = self.layout.offset(
+            for: self.layout.highestDetent(availableHeight: self.availableHeight),
+            availableHeight: self.availableHeight
+        )
+        let height = max(self.availableHeight - highest, 0) + self.bottomInset + self.behavior.overDragLimit
+
+        guard heightConstraint.constant != height else { return }
+
+        heightConstraint.constant = height
+    }
+
+    /// `static` 모드에서 콘텐츠의 안전 영역 바닥을 탭바 윗선에 맞춥니다.
+    ///
+    /// 시트 바닥은 부모 안전 영역 바닥보다 `bottomInset + overDragLimit`만큼 아래에 있습니다.
+    /// 그 구간은 탭바에 가리거나 화면 밖이라 콘텐츠가 피해야 합니다. UIKit은 창의 안전 영역
+    /// 기준으로만 인셋을 계산하므로, 불투명 탭바처럼 부모 View가 이미 줄어든 경우 탭바 구간을 모릅니다.
+    /// 필요한 값에서 UIKit이 이미 넣어 준 값을 빼고 나머지를 `additionalSafeAreaInsets`로 보탭니다.
+    private func updateContentSafeAreaIfNeeded() {
+        let additional: CGFloat
+
+        switch self.contentMode {
+        case .fitToBounds:
+            additional = 0
+
+        case .static:
+            guard let host = self.hostView, self.availableHeight > 0 else { return }
+
+            let desired = self.bottomInset + self.behavior.overDragLimit
+            var inherited: CGFloat = 0
+
+            if let window = host.window {
+                let sheetBottom = host.convert(
+                    CGPoint(x: 0, y: host.bounds.maxY + self.behavior.overDragLimit),
+                    to: window
+                ).y
+                let windowSafeBottom = window.bounds.maxY - window.safeAreaInsets.bottom
+                inherited = max(sheetBottom - windowSafeBottom, 0)
+            }
+
+            additional = max(desired - inherited, 0)
+        }
+
+        guard self.contentViewController.additionalSafeAreaInsets.bottom != additional else { return }
+
+        self.contentViewController.additionalSafeAreaInsets.bottom = additional
+    }
+
+    private func installHostLayoutObserver(in host: UIView) {
+        let observer = BottomSheetHostLayoutObserverView()
+        observer.isHidden = true
+        observer.isUserInteractionEnabled = false
+        observer.translatesAutoresizingMaskIntoConstraints = false
+        observer.onLayout = { [weak self] in
+            self?.layoutIfPossible()
+        }
+        host.addSubview(observer)
+
+        let guide = host.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            observer.topAnchor.constraint(equalTo: guide.topAnchor),
+            observer.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+            observer.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+            observer.bottomAnchor.constraint(equalTo: guide.bottomAnchor)
+        ])
+
+        self.hostLayoutObserver = observer
+    }
+
     private func embedContent() {
         self.addChild(self.contentViewController)
 
@@ -399,6 +511,9 @@ public final class BottomSheetController: UIViewController {
     /// 높이가 화면 전체로 잡히므로 자리를 정하면 안 됩니다.
     private func layoutIfPossible() {
         guard self.view.window != nil, self.topConstraint != nil, self.availableHeight > 0 else { return }
+
+        self.updateStaticHeightIfNeeded()
+        self.updateContentSafeAreaIfNeeded()
 
         guard self.hasEnteredScreen else {
             return self.enterScreen()
@@ -485,6 +600,7 @@ public final class BottomSheetController: UIViewController {
         /// 같은 이름이어도 높이 기준이 바뀌었을 수 있으므로 단계 값을 갈아 끼우고 자리를 다시 잡습니다.
         self.currentDetent = target
         self.surfaceView.handleView.accessibilityValue = target.identifier.rawValue
+        self.updateStaticHeightIfNeeded()
 
         guard self.hasEnteredScreen else { return }
 
@@ -783,9 +899,29 @@ extension BottomSheetController {
 
 
 
+// MARK: - Host Layout Observer
+
+/// 부모 안전 영역을 따라 배치되는 빈 View입니다. 배치가 돌 때마다 시트에 알립니다.
+@MainActor
+final class BottomSheetHostLayoutObserverView: UIView {
+
+    var onLayout: (() -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        self.onLayout?()
+    }
+}
+
+
+
 // MARK: - Animation
 
 extension BottomSheetController {
+
+    /// 스프링 초기 속도(이동 거리 대비 배율)의 한도입니다.
+    private static let maximumInitialVelocity: CGFloat = 8
 
     /// 지정한 단계로 스프링 애니메이션을 실행합니다.
     ///
@@ -800,9 +936,10 @@ extension BottomSheetController {
         let target = self.offset(for: detent)
         let distance = target - self.currentOffset
 
-        /// 스프링의 초기 속도는 이동 거리로 나눈 값이어야 합니다.
-        /// 속도를 그대로 넣으면 거리가 짧을 때 크게 튕깁니다.
-        let initialVelocity = distance == 0 ? 0 : velocity / distance
+        /// 스프링의 초기 속도는 이동 거리로 나눈 값이어야 합니다. 속도를 그대로 넣으면 거리가 짧을 때
+        /// 크게 튕깁니다. 거리가 아주 짧으면 나눈 값이 수십이 되어 되레 튀므로 한도를 둡니다.
+        let normalized = distance == 0 ? 0 : velocity / distance
+        let initialVelocity = min(max(normalized, -Self.maximumInitialVelocity), Self.maximumInitialVelocity)
 
         let timing: UITimingCurveProvider = UIAccessibility.isReduceMotionEnabled
             ? UICubicTimingParameters(animationCurve: .easeInOut)
