@@ -17,6 +17,8 @@
 		5C0000000000000000000024 /* DemoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000022 /* DemoItem.swift */; };
 		5C0000000000000000000026 /* SwiftUIExtension in Frameworks */ = {isa = PBXBuildFile; productRef = 5C0000000000000000000025 /* SwiftUIExtension */; };
 		5C0000000000000000000028 /* SwiftUIBottomSheetDemoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000027 /* SwiftUIBottomSheetDemoScreen.swift */; };
+		5C000000000000000000002D /* MapHostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002B /* MapHostViewModel.swift */; };
+		5C000000000000000000002E /* MapDemoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002C /* MapDemoViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +32,8 @@
 		5C0000000000000000000022 /* DemoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoItem.swift; sourceTree = "<group>"; };
 		5C0000000000000000000027 /* SwiftUIBottomSheetDemoScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUIBottomSheetDemoScreen.swift; sourceTree = "<group>"; };
 		5C0000000000000000000029 /* Demo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Demo.xcconfig; sourceTree = "<group>"; };
+		5C000000000000000000002B /* MapHostViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapHostViewModel.swift; sourceTree = "<group>"; };
+		5C000000000000000000002C /* MapDemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapDemoViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,6 +88,8 @@
 		5C000000000000000000001E /* BottomSheet */ = {
 			isa = PBXGroup;
 			children = (
+				5C000000000000000000002B /* MapHostViewModel.swift */,
+				5C000000000000000000002C /* MapDemoViewModel.swift */,
 				5C0000000000000000000017 /* BottomSheetDemoView.swift */,
 				5C0000000000000000000018 /* BottomSheetHostViewController.swift */,
 				5C0000000000000000000019 /* PlaceListViewController.swift */,
@@ -185,6 +191,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5C000000000000000000002D /* MapHostViewModel.swift in Sources */,
+				5C000000000000000000002E /* MapDemoViewModel.swift in Sources */,
 				5C0000000000000000000003 /* SwiftExtensionDemoApp.swift in Sources */,
 				5C000000000000000000001A /* DemoListView.swift in Sources */,
 				5C000000000000000000001B /* BottomSheetDemoView.swift in Sources */,
@@ -238,6 +246,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치로 지도를 옮기기 위해 위치 권한이 필요해요.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -266,6 +275,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치로 지도를 옮기기 위해 위치 권한이 필요해요.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
