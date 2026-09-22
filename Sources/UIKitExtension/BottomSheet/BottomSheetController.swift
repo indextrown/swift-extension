@@ -78,7 +78,11 @@ public final class BottomSheetController: UIViewController {
     /// 시트가 쓸 수 있는 안전 영역의 높이입니다.
     ///
     /// 부모의 안전 영역을 기준으로 합니다. 탭바 높이가 여기에 반영되어 있어
-    /// 가장 낮은 단계에서도 손잡이가 탭바에 가리지 않습니다. 화면에 붙기 전에는 0입니다.
+    /// 가장 낮은 단계에서도 손잡이가 탭바에 가리지 않습니다.
+    ///
+    /// `add(to:)` 전에는 0입니다. 붙인 뒤에도 부모가 창에 놓여 배치를 마치기 전에는
+    /// 안전 영역이 반영되지 않은 값일 수 있습니다. 시트는 그 값으로 자리를 잡지 않고
+    /// 배치가 끝난 뒤에 잡으므로, 이 값은 `didChangeDetent` 같은 콜백 안에서 읽는 것이 안전합니다.
     public var availableHeight: CGFloat {
         return self.hostView?.safeAreaLayoutGuide.layoutFrame.height ?? 0
     }
@@ -291,7 +295,8 @@ public final class BottomSheetController: UIViewController {
     /// 탭바의 반투명한 위 가장자리로 시트가 비쳐 보입니다.
     ///
     /// - Parameter detent: 위치를 구할 단계입니다.
-    /// - Returns: 부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리입니다. 화면에 붙기 전에는 0입니다.
+    /// - Returns: 부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리입니다. `availableHeight`와
+    ///   같은 시점 조건을 따르므로 배치가 끝난 뒤에 읽어야 정확합니다.
     public func offset(for detent: BottomSheetDetent) -> CGFloat {
         if detent.anchor == .hidden, let host = self.hostView {
             let safeTop = host.safeAreaLayoutGuide.layoutFrame.minY
