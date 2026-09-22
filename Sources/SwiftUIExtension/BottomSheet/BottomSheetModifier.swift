@@ -175,6 +175,11 @@ struct BottomSheetOverlay<Content: View>: View {
         .onChange(of: self.allowedDetents) { _, _ in
             self.applyAllowedDetents()
         }
+        .onChange(of: self.layout) { _, _ in
+            /// 단계 정의가 바뀌면(예: `.content(padding:)`의 여백) 같은 이름의 단계 자리로 옮겨 갑니다. UIKit의 `layout` didSet과 같아요.
+            self.applyAllowedDetents()
+            self.applyCurrentDetentIfNeeded(animated: true)
+        }
         .onPreferenceChange(BottomSheetScrollStateKey.self) { newValue in
             self.scrollState = newValue
         }
