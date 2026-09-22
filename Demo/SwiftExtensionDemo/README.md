@@ -51,7 +51,17 @@ xcodebuild \
   build
 ```
 
-코드 서명을 끄고 있어서 시뮬레이터에서만 바로 실행돼요. 실제 기기에서 돌리려면 Signing 설정에 팀을 넣어요.
+### 실기기에서 실행하기
+
+코드 서명은 `Automatic`이고 팀 ID는 커밋하지 않아요. 한 번만 아래를 해 두면 Xcode에서 기기를 골라 바로 실행돼요.
+
+```bash
+cp Demo/SwiftExtensionDemo/Config/Local.xcconfig.example Demo/SwiftExtensionDemo/Config/Local.xcconfig
+```
+
+그리고 `Local.xcconfig`의 `DEVELOPMENT_TEAM`을 본인 팀 ID로 바꿔요. 이 파일은 `.gitignore`에 있어서 저장소에 올라가지 않아요. 파일이 없어도 시뮬레이터 빌드는 그대로 돼요.
+
+`The executable is not codesigned`가 나오면 `Local.xcconfig`가 없거나 팀 ID가 비어 있는 거예요. Xcode의 Signing & Capabilities에서 팀을 고르면 프로젝트 파일에 팀 ID가 기록되니, 그 변경은 커밋하지 말고 `Local.xcconfig`를 써요.
 
 ## 바텀시트 데모에서 볼 것
 
