@@ -20,7 +20,7 @@ struct SwiftUIBottomSheetDemoScreen: View {
     @State private var viewModel = MapDemoViewModel()
     @State private var detent: BottomSheetDetent.Identifier = .tip
 
-    /// 시트 위치예요. `onOffsetChange`가 끄는 동안과 도착할 때 채워 줍니다.
+    /// 시트 위치예요. `onOffsetChange`가 시트가 움직이는 매 프레임 채워 줍니다.
     @State private var sheetOffset: CGFloat?
 
     /// 처음엔 MapKit이 현재 위치를 따라가게 둡니다. `.automatic`으로 두면 사용자 위치 어노테이션이
@@ -53,8 +53,9 @@ struct SwiftUIBottomSheetDemoScreen: View {
                     UserAnnotation()
                 }
                 /// 시트가 가린 만큼 안전 영역을 줄이면 MapKit이 보이는 영역 가운데로 카메라를 다시 잡습니다.
-                /// `onOffsetChange`가 준 offset에 묶여 있어 끄는 동안은 매 프레임, 도착할 때는 시트와 같은
-                /// 애니메이션으로 따라갑니다. UIKit 판의 `didChangeCoveredHeight`와 같은 역할이에요.
+                /// `onOffsetChange`가 매 프레임 준 offset에 묶여 있어 끄는 동안도, 손을 뗀 뒤 스프링으로 움직이는
+                /// 동안도 시트와 같은 프레임에 따라갑니다. 애니메이션을 따로 걸지 않아요. UIKit 판의
+                /// `didChangeCoveredHeight`와 같은 역할이에요.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     Color.clear.frame(height: coveredBySheet)
                 }

@@ -39,9 +39,10 @@ extension View {
     ///   - style: 표시 속성입니다.
     ///   - behavior: 손을 따라오고 단계 사이를 옮기는 방식입니다.
     ///   - onOffsetChange: 시트 위치(부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리)를 전달합니다.
-    ///     사용자가 끄는 동안은 매 프레임, 손을 뗀 뒤나 `detent`를 바꿔 옮길 때는 도착 위치를 한 번
-    ///     애니메이션 블록 안에서 전달합니다. 받은 값을 `@State`에 넣으면 그 값에 묶인 View가 시트와
-    ///     나란히 움직입니다.
+    ///     시트가 움직이는 매 프레임 불립니다. 사용자가 끄는 동안은 손가락 위치를, 손을 뗀 뒤나 `detent`를
+    ///     바꿔 옮기는 동안은 애니메이션이 지나는 중간 위치를 그대로 전달합니다. 받은 값을 `@State`에
+    ///     넣기만 하면 그 값에 묶인 View가 시트와 같은 프레임에 움직여요. 애니메이션 블록으로 감싸지
+    ///     않아도 되고, `Map`처럼 UIKit이 그리는 View의 안전 영역에 묶어도 튀지 않습니다.
     ///   - content: 시트 안에 표시할 내용입니다.
     public func bottomSheet<Content: View>(
         detent: Binding<BottomSheetDetent.Identifier>,
@@ -153,6 +154,8 @@ struct BottomSheetOverlay<Content: View>: View {
                     .offset(y: self.offset)
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+            /// 자리를 잡기 전(offset 0)은 알리지 않습니다. 알리면 바깥이 "시트가 화면을 다 가렸다"로 한 프레임 그려요.
+            .modifier(BottomSheetOffsetReporter(offset: self.offset, isActive: self.hasEntered))
             .onAppear {
                 self.metrics = measured
                 self.enterIfPossible()
@@ -170,6 +173,11 @@ struct BottomSheetOverlay<Content: View>: View {
         }
         .onPreferenceChange(BottomSheetScrollStateKey.self) { newValue in
             self.scrollState = newValue
+        }
+        .onPreferenceChange(BottomSheetReportedOffsetKey.self) { newValue in
+            guard let newValue else { return }
+
+            self.onOffsetChange?(newValue)
         }
     }
 
@@ -316,7 +324,6 @@ struct BottomSheetOverlay<Content: View>: View {
 
         guard self.behavior.animatesInitialAppearance, self.reduceMotion == false else {
             self.offset = target
-            self.onOffsetChange?(target)
             return
         }
 
@@ -324,7 +331,6 @@ struct BottomSheetOverlay<Content: View>: View {
 
         withAnimation(self.animation(velocity: 0, distance: 0)) {
             self.offset = target
-            self.onOffsetChange?(target)
         }
     }
 
@@ -338,7 +344,6 @@ struct BottomSheetOverlay<Content: View>: View {
         guard abs(self.offset - target) > 0.5 else { return }
 
         self.offset = target
-        self.onOffsetChange?(target)
     }
 
     /// 바인딩이 바뀌면 그 단계로 옮깁니다. 이미 그 자리면 아무 일도 하지 않습니다.
@@ -351,7 +356,6 @@ struct BottomSheetOverlay<Content: View>: View {
 
         withAnimation(self.animation(velocity: 0, distance: target - self.offset)) {
             self.offset = target
-            self.onOffsetChange?(target)
         }
     }
 
@@ -469,7 +473,6 @@ struct BottomSheetOverlay<Content: View>: View {
             )
 
             self.offset = resisted
-            self.onOffsetChange?(resisted)
             return
         }
 
@@ -526,17 +529,53 @@ struct BottomSheetOverlay<Content: View>: View {
         )
         let targetOffset = self.targetOffset(for: target)
 
-        /// 도착 위치와 바인딩을 같은 애니메이션 블록 안에서 바꿉니다. `onOffsetChange`나 `detent`에 묶인
-        /// 바깥 View가 시트와 나란히 움직여요. offset을 먼저 도착점으로 바꿔 두어야 바인딩 변화가
-        /// 같은 자리로 다시 애니메이션하지 않습니다.
+        /// 도착 위치와 바인딩을 같은 애니메이션 블록 안에서 바꿉니다. `detent`에 묶인 바깥 View가
+        /// 시트와 나란히 움직여요. offset을 먼저 도착점으로 바꿔 두어야 바인딩 변화가 같은 자리로
+        /// 다시 애니메이션하지 않습니다.
         withAnimation(self.animation(velocity: velocity, distance: targetOffset - releasedAt)) {
             self.offset = targetOffset
-            self.onOffsetChange?(targetOffset)
 
             if self.detent != target.identifier {
                 self.detent = target.identifier
             }
         }
+    }
+}
+
+
+
+// MARK: - Offset Reporter
+
+/// 시트의 실제 위치를 매 프레임 preference로 올려 보내는 모디파이어입니다.
+///
+/// `offset`이 애니메이션 블록 안에서 바뀌면 SwiftUI는 `Animatable`인 이 모디파이어의 `body`를
+/// 중간값으로 프레임마다 다시 평가합니다. 그 값을 preference로 내보내면 시트가 스프링으로
+/// 움직이는 동안에도 바깥이 실제 위치를 프레임마다 받을 수 있어요. 도착값만 애니메이션 블록 안에서
+/// 한 번 알리면, `Map`처럼 UIKit이 그리는 View는 중간 위치를 보간하지 못해 도착점으로 튀어 버립니다.
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
+private struct BottomSheetOffsetReporter: ViewModifier, Animatable {
+
+    var offset: CGFloat
+
+    /// `false`면 알리지 않습니다. 자리를 잡기 전의 임시 위치를 바깥에 흘리지 않기 위해서예요.
+    var isActive: Bool
+
+    var animatableData: CGFloat {
+        get { self.offset }
+        set { self.offset = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        content.preference(key: BottomSheetReportedOffsetKey.self, value: self.isActive ? self.offset : nil)
+    }
+}
+
+private struct BottomSheetReportedOffsetKey: PreferenceKey {
+
+    static let defaultValue: CGFloat? = nil
+
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        value = nextValue() ?? value
     }
 }
 #endif
