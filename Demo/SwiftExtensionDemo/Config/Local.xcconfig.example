@@ -1,0 +1,4 @@
+// 이 파일을 Local.xcconfig로 복사하고 본인의 팀 ID를 넣어요. Local.xcconfig는 커밋되지 않아요.
+// 팀 ID는 developer.apple.com → Membership 또는 Xcode → Settings → Accounts에서 볼 수 있어요.
+
+DEVELOPMENT_TEAM = ABCDE12345

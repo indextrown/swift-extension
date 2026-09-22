@@ -1,0 +1,7 @@
+// SwiftExtensionDemo 빌드 설정이에요.
+//
+// 실기기에 설치하려면 코드 서명에 개발 팀이 필요해요. 팀 ID는 사람마다 달라서 저장소에
+// 커밋하지 않고 Local.xcconfig에서 읽어요. Local.xcconfig.example을 복사해 만들어요.
+// 파일이 없어도 시뮬레이터 빌드는 그대로 돼요.
+
+#include? "Local.xcconfig"

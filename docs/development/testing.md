@@ -17,10 +17,10 @@
 
 | 항목 | 확인한 값 |
 | --- | --- |
-| 테스트 타깃 | `AlgorithmTests`, `LabsTests`, `SwiftExtensionTests` |
+| 테스트 타깃 | `AlgorithmTests`, `LabsTests`, `SwiftExtensionTests`, `UIComponentsCoreTests`, `UIKitExtensionTests`, `SwiftUIExtensionTests` |
 | 테스트 프레임워크 | Swift Testing (`import Testing`, `@Test`, `#expect`) |
 | 실행 환경 | macOS에서 `swift test`로 실행해요. 시뮬레이터가 필요하지 않아요. |
-| CI 검증 | `main` 푸시와 모든 PR에서 `Build`·`Test` 워크플로가 macOS 러너로 돌아요. |
+| CI 검증 | `main` 푸시와 모든 PR에서 `Build`·`Test` 워크플로가 macOS 러너로 돌아요. UIKit 코드는 CI에서 컴파일되지 않아요. |
 
 각 테스트 타깃은 대응하는 product 하나에만 의존해요. 테스트에서 다른 모듈을 import해야 한다면 모듈 경계를 다시 확인해요.
 
@@ -41,7 +41,7 @@ swift build
 swift build -c release
 ```
 
-Xcode에서 확인하려면 `Package.swift`를 열고 `⌘U`로 실행해요. 데모 앱은 `Demo/AlgorithmDemo/README.md`의 `xcodebuild` 명령을 따라요.
+Xcode에서 확인하려면 `Package.swift`를 열고 `⌘U`로 실행해요. 데모 앱은 두 개예요. macOS용 `Demo/AlgorithmDemo`와 iOS용 `Demo/SwiftExtensionDemo`이고, 각 폴더의 README에 `xcodebuild` 명령이 있어요.
 
 ## CI에서 도는 검증
 
@@ -53,6 +53,25 @@ Xcode에서 확인하려면 `Package.swift`를 열고 `⌘U`로 실행해요. �
 | `Test` | `.github/workflows/test.yml` | `swift test`를 실행해요. |
 
 같은 브랜치에 새 커밋을 올리면 이전 실행은 취소돼요(`cancel-in-progress`). 로컬에서 먼저 확인하고 올리는 순서를 지켜요. CI가 실패하면 로컬에서 같은 명령을 돌려 재현한 뒤 고쳐요.
+
+## iOS 시뮬레이터에서 UIKit 코드 테스트
+
+`swift test`는 macOS용으로 컴파일해요. `#if canImport(UIKit) && !os(watchOS) && !os(tvOS)` 안쪽 코드는 컴파일조차 되지 않으니, UIKit 코드를 바꿨으면 아래 명령으로 시뮬레이터에서 돌려요. 이 저장소에서 실행해 통과를 확인한 명령이에요.
+
+```bash
+# iOS 빌드 확인
+xcodebuild -scheme UIKitExtension -destination 'generic/platform=iOS Simulator' build
+
+# UIKitExtension 테스트를 시뮬레이터에서 실행
+xcodebuild test \
+  -scheme SwiftExtension-Package \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro Max' \
+  -only-testing:UIKitExtensionTests
+```
+
+- `SwiftExtension-Package`는 SwiftPM이 만드는 스킴이에요. `xcodebuild -list`로 확인할 수 있어요.
+- 기기 이름은 `xcrun simctl list devices available`에 있는 것으로 바꿔요.
+- UIKit 코드의 테스트 파일은 같은 `#if`로 감싸요. macOS에서는 빈 파일로 컴파일돼요.
 
 ## 테스트 작성 방법
 

@@ -18,8 +18,9 @@ components live in their own targets so clients only link what they use.
 | `Algorithm` | Available | Data structures and algorithms. Currently `Stack`. |
 | `Labs` | Available | Experimental implementations and playgrounds. Not part of the public API surface yet. |
 | `SwiftExtension` | Available | Package-level entry point. Exposes `SwiftExtension.version`. |
-| `UIKitExtension` | Available | Reusable UIKit views and `UIView` / `UIViewController` extensions. No public declarations yet. |
-| `SwiftUIExtension` | Available | Reusable SwiftUI views, `View` extensions, and view modifiers. No public declarations yet. |
+| `UIComponentsCore` | Available | Framework-neutral logic shared by the UI modules (bottom sheet detents, layout math, motion). Foundation only. Re-exported by both UI modules. |
+| `UIKitExtension` | Available | Reusable UIKit components. Currently `BottomSheetController`, a bottom sheet that rises from behind the tab bar. |
+| `SwiftUIExtension` | Available | Reusable SwiftUI components. Currently the `bottomSheet(detent:)` modifier and `BottomSheetScrollView` (iOS 17+). |
 
 Core modules never import UIKit, SwiftUI, or AppKit, so they can be used on
 servers and command line tools as well as Apple platforms.
@@ -94,10 +95,11 @@ Sources/
 ├── Algorithm/         data structures and algorithms
 ├── Labs/              experimental code and playgrounds
 ├── SwiftExtension/    package entry point
+├── UIComponentsCore/  logic shared by the UI modules (Foundation only)
 ├── UIKitExtension/    reusable UIKit components
 └── SwiftUIExtension/  reusable SwiftUI components
 Tests/                 one test target per product
-Demo/                  sample apps that depend on the local package
+Demo/                  sample apps: AlgorithmDemo (macOS), SwiftExtensionDemo (iOS)
 docs/                  architecture and development guides (Korean)
 ```
 
@@ -109,6 +111,7 @@ Development guides are written in Korean.
 - [API 설계 규칙](docs/architecture/api-design.md) — public API naming, access control, compatibility
 - [성능 기준](docs/architecture/performance.md) — value semantics, allocation, measurement
 - [UI 모듈 가이드](docs/architecture/ui-modules.md) — rules for the UIKit and SwiftUI targets
+- [바텀시트](docs/components/bottom-sheet.md) — `BottomSheetController` usage, scroll tracking, verification
 - [Swift 스타일](docs/development/swiftstyle.md) — formatting and naming
 - [테스트](docs/development/testing.md) — test targets and commands
 - [Git 작업 흐름](docs/development/gitflow.md) — branches, commits, pull requests
