@@ -10,9 +10,9 @@ import SwiftUI
 
 /// 애플이 제공하는 SwiftUI `.sheet`를 같은 `TabView` 구성 안에서 띄우는 비교용 화면입니다.
 ///
-/// `bottomSheet(detent:)`와 달리 **모달**이라 탭바 위를 덮어요. 시트가 떠 있는 동안 탭을 바꿀 수 없고,
-/// 시트 위치를 프레임마다 알려 주는 방법이 없어 지도가 시트를 따라가지 않아요. 단계는 커스텀 시트와 같은
-/// 96pt·medium·large로 맞췄어요.
+/// `bottomSheet(detent:)`와 달리 **모달**이라 탭바 위를 덮어요. 화면이 열리면 기본 탭바가 먼저 보이고,
+/// `시트 열기`를 누르면 시트가 탭바를 덮어 탭을 바꿀 수 없게 돼요. 시트 위치를 프레임마다 알려 주는 방법이 없어
+/// 지도가 시트를 따라가지 않아요. 단계는 커스텀 시트와 같은 96pt·medium·large로 맞췄어요.
 struct SwiftUINativeSheetDemoScreen: View {
 
     private static let tip = PresentationDetent.height(96)
@@ -35,7 +35,6 @@ struct SwiftUINativeSheetDemoScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             self.viewModel.start()
-            self.isPresented = true
         }
         /// 뒤로 가면 시트도 함께 닫습니다. 모달은 이 화면이 아니라 창에 붙어 있어요.
         .onDisappear {
@@ -68,7 +67,7 @@ struct SwiftUINativeSheetDemoScreen: View {
                     .padding(.vertical, 4)
                     .background(.background.opacity(0.8), in: RoundedRectangle(cornerRadius: 8))
 
-                /// 시트를 끝까지 내려 닫은 뒤 다시 띄우는 버튼입니다.
+                /// 시트를 띄우는 버튼입니다. 탭바가 먼저 보이도록 자동으로 띄우지 않고 이 버튼으로만 띄워요.
                 Button("시트 열기") {
                     self.isPresented = true
                 }
@@ -92,6 +91,8 @@ struct SwiftUINativeSheetDemoScreen: View {
             name = "large"
         }
 
-        return "sheet=\(name)  .sheet + presentationDetents\n\(self.viewModel.message)"
+        let hint = self.isPresented ? "탭바가 시트 아래에 가려져요" : "탭바가 보여요. 시트 열기를 눌러요"
+
+        return "sheet=\(name)  .sheet + presentationDetents\n\(hint) · \(self.viewModel.message)"
     }
 }

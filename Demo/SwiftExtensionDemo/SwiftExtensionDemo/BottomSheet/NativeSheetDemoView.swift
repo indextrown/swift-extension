@@ -11,8 +11,9 @@ import UIKit
 
 /// 애플이 제공하는 `UISheetPresentationController`를 같은 탭바 구성 안에서 띄우는 비교용 화면입니다.
 ///
-/// `BottomSheetController`와 달리 **모달**이라 시트가 탭바 위를 덮어요. 시트가 떠 있는 동안 탭을 바꿀 수 없고,
-/// 끝까지 내리면 닫혀요. 단계는 커스텀 시트와 같은 96pt·medium·large로 맞춰 나란히 비교할 수 있게 했어요.
+/// `BottomSheetController`와 달리 **모달**이라 시트가 탭바 위를 덮어요. 화면이 열리면 기본 탭바가 먼저 보이고,
+/// `시트 열기`를 누르면 시트가 탭바를 덮어 탭을 바꿀 수 없게 돼요. 끝까지 내리면 닫혀요. 단계는 커스텀 시트와 같은
+/// 96pt·medium·large로 맞춰 나란히 비교할 수 있게 했어요.
 struct NativeSheetDemoScreen: View {
 
     var body: some View {
@@ -60,10 +61,9 @@ final class NativeSheetHostViewController: UIViewController {
     /// 항상 두 줄로 고정해 높이가 바뀌지 않게 합니다.
     private let statusLabel = UILabel()
 
-    /// 시트를 끝까지 내려 닫은 뒤 다시 띄우는 버튼입니다.
+    /// 시트를 띄우는 버튼입니다. 탭바가 먼저 보이도록 자동으로 띄우지 않고 이 버튼으로만 띄워요.
     private let openButton = UIButton(type: .system)
 
-    private var hasPresented = false
     private var hasCenteredOnUser = false
 
 
@@ -78,15 +78,6 @@ final class NativeSheetHostViewController: UIViewController {
         self.bindViewModel()
         self.viewModel.start()
         self.report(detent: nil)
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-
-        guard self.hasPresented == false else { return }
-
-        self.hasPresented = true
-        self.presentSheet()
     }
 
     /// 화면을 떠날 때 시트도 함께 내립니다. 모달은 이 화면이 아니라 창에 붙어 있어서, 뒤로 가기로
@@ -207,7 +198,9 @@ final class NativeSheetHostViewController: UIViewController {
         case nil: name = "dismissed"
         }
 
-        self.statusLabel.text = " sheet=\(name)  UISheetPresentationController \n \(self.viewModel.state.message) "
+        let hint = detent == nil ? "탭바가 보여요. 시트 열기를 눌러요" : "탭바가 시트 아래에 가려져요"
+
+        self.statusLabel.text = " sheet=\(name)  UISheetPresentationController \n \(hint) · \(self.viewModel.state.message) "
     }
 }
 
