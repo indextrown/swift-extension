@@ -19,7 +19,8 @@ import UIKit
 /// 시트는 `BottomSheetLayout`에 등록된 단계에서만 멈춥니다. 손을 뗀 위치와 속도로
 /// 가장 가까운 단계를 골라 스프링으로 옮깁니다. 콘텐츠에 스크롤뷰가 있으면
 /// `track(scrollView:)`로 넘겨 두면, 시트가 다 올라가기 전에는 스크롤 대신 시트가
-/// 움직이고 다 올라간 뒤에야 스크롤이 시작됩니다.
+/// 움직이고 다 올라간 뒤에야 스크롤이 시작됩니다. 스크롤이 시트를 올리지 않게 하려면
+/// `BottomSheetBehavior.scrollingExpandsSheet`를 `false`로 둡니다.
 ///
 /// ```swift
 /// let sheet = BottomSheetController(contentViewController: listViewController)
@@ -43,7 +44,9 @@ public final class BottomSheetController: UIViewController {
     public let appearance: BottomSheetAppearance
 
     /// 시트가 손을 따라오고 단계 사이를 옮기는 방식입니다.
-    public let behavior: BottomSheetBehavior
+    ///
+    /// 값을 바꾸면 다음 끌기부터 적용됩니다.
+    public var behavior: BottomSheetBehavior
 
     /// 시트가 움직일 때 콘텐츠 높이를 다루는 방식입니다.
     public let contentMode: BottomSheetContentMode
@@ -296,8 +299,9 @@ public final class BottomSheetController: UIViewController {
     /// 시트가 따라갈 스크롤뷰를 정합니다.
     ///
     /// 시트가 가장 높은 단계에 있지 않으면 스크롤 대신 시트가 움직이고, 가장 높은 단계에서
-    /// 스크롤이 맨 위에 닿은 채로 아래로 끌면 다시 시트가 움직입니다. `nil`을 넘기면
-    /// 따라가기를 멈춥니다.
+    /// 스크롤이 맨 위에 닿은 채로 아래로 끌면 다시 시트가 움직입니다. `behavior.scrollingExpandsSheet`가
+    /// `false`면 위로 끌 때는 언제나 스크롤이 움직이고, 맨 위에서 아래로 끌 때만 시트로 넘어옵니다.
+    /// `nil`을 넘기면 따라가기를 멈춥니다.
     ///
     /// - Parameter scrollView: 콘텐츠 화면 안의 세로 스크롤뷰입니다.
     public func track(scrollView: UIScrollView?) {
@@ -722,9 +726,12 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
             self.stopAnimation()
             self.isDragging = true
             self.dragStartOffset = self.currentOffset
-            self.dragMode = self.initialDragMode(velocity: velocity)
 
-            if self.dragMode == .sheet {
+            let touchesScrollView = self.isTouchingTrackedScrollView(gesture)
+            self.dragMode = self.initialDragMode(velocity: velocity, touchesScrollView: touchesScrollView)
+
+            /// 손가락이 스크롤뷰 위에 있을 때만 붙잡습니다. 손잡이를 끌 때 스크롤 위치를 건드리면 목록이 맨 위로 튀어요.
+            if self.dragMode == .sheet, touchesScrollView {
                 self.hideScrollIndicator()
                 self.pinTrackedScrollToTop()
             }
@@ -801,11 +808,14 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
     }
 
     /// 끌기가 시작될 때 시트와 스크롤 중 무엇이 움직일지 정합니다.
-    private func initialDragMode(velocity: CGFloat) -> DragMode {
-        guard let scrollView = self.trackedScrollView else { return .sheet }
+    private func initialDragMode(velocity: CGFloat, touchesScrollView: Bool) -> DragMode {
+        /// 손잡이처럼 스크롤뷰 밖에서 시작한 끌기는 언제나 시트를 움직입니다.
+        guard let scrollView = self.trackedScrollView, touchesScrollView else { return .sheet }
 
-        /// 가장 높은 단계 아래에 있으면 언제나 시트가 움직입니다.
-        guard self.currentOffset <= self.highestOffset + 0.5 else { return .sheet }
+        /// 스크롤이 시트를 올리는 모드에서는 가장 높은 단계 아래에 있으면 언제나 시트가 움직입니다.
+        if self.behavior.scrollingExpandsSheet, self.currentOffset > self.highestOffset + 0.5 {
+            return .sheet
+        }
 
         /// 맨 위에서 아래로 끌면 시트가, 그 밖에는 스크롤이 움직입니다.
         if self.isAtTop(scrollView) {
@@ -813,6 +823,12 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
         }
 
         return .scroll
+    }
+
+    private func isTouchingTrackedScrollView(_ gesture: UIGestureRecognizer) -> Bool {
+        guard let scrollView = self.trackedScrollView else { return false }
+
+        return scrollView.point(inside: gesture.location(in: scrollView), with: nil)
     }
 
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -843,9 +859,9 @@ extension BottomSheetController {
 
     /// 스크롤이 움직여야 할 때가 아니면 맨 위에 붙잡아 둡니다.
     ///
-    /// 시트가 가장 높은 단계 아래에 있거나 손가락이 시트를 움직이는 동안은 스크롤이
-    /// 움직이면 안 됩니다. `contentOffset`을 매번 되돌려 놓아 스크롤뷰의 제스처를 끊지
-    /// 않고도 제자리에 세웁니다. `isScrollEnabled`를 끄면 진행 중인 터치가 취소됩니다.
+    /// 손가락이 시트를 움직이는 동안, 그리고 스크롤이 시트를 올리는 모드에서 시트가 가장 높은
+    /// 단계 아래에 있을 때는 스크롤이 움직이면 안 됩니다. `contentOffset`을 매번 되돌려 놓아
+    /// 스크롤뷰의 제스처를 끊지 않고도 제자리에 세웁니다. `isScrollEnabled`를 끄면 진행 중인 터치가 취소됩니다.
     private func pinScrollIfNeeded(_ scrollView: UIScrollView) {
         guard self.shouldPinScroll else { return }
 
@@ -863,7 +879,7 @@ extension BottomSheetController {
             return self.dragMode == .sheet
         }
 
-        return self.currentOffset > self.highestOffset + 0.5
+        return self.behavior.scrollingExpandsSheet && self.currentOffset > self.highestOffset + 0.5
     }
 
     private func pinTrackedScrollToTop() {

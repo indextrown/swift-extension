@@ -37,6 +37,12 @@ final class BottomSheetHostViewController: UIViewController {
     /// 시트 위에 떠서 함께 올라가는 버튼입니다. 형제 View를 `sheet.view.topAnchor`에 붙여 따라가게 합니다.
     private let locateButton = UIButton(type: .system)
 
+    /// 목록을 위로 끌 때 시트가 먼저 올라갈지 정합니다. 데모 툴바의 토글이 바꿔 줍니다.
+    var scrollingExpandsSheet: Bool {
+        get { self.sheet.behavior.scrollingExpandsSheet }
+        set { self.sheet.behavior.scrollingExpandsSheet = newValue }
+    }
+
     /// 처음 받은 위치로 지도를 한 번만 옮기기 위한 표시입니다.
     private var hasCenteredOnUser = false
 

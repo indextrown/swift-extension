@@ -35,19 +35,30 @@ public struct BottomSheetBehavior: Hashable, Sendable {
     /// 처음 화면에 붙을 때 아래에서 올라오는 애니메이션을 쓸지 정합니다.
     public var animatesInitialAppearance: Bool
 
+    /// 콘텐츠의 스크롤뷰를 위로 끌면 시트가 먼저 올라갈지 정합니다.
+    ///
+    /// `true`면 시트가 가장 높은 단계 아래에 있을 때 스크롤뷰를 위로 끌면 스크롤 대신 시트가 올라가고,
+    /// 가장 높은 단계에 닿은 뒤부터 스크롤이 움직입니다. Apple 지도와 `UISheetPresentationController`의
+    /// 기본 동작(`prefersScrollingExpandsWhenScrolledToEdge`)이에요. `false`면 스크롤뷰를 위로 끌 때는
+    /// 시트가 어느 단계에 있든 스크롤이 움직이고, 시트는 손잡이나 스크롤뷰 밖을 끌어야 올라갑니다.
+    /// 어느 쪽이든 스크롤이 맨 위에 닿은 채로 아래로 끌면 시트가 내려옵니다.
+    public var scrollingExpandsSheet: Bool
+
     /// 움직임 값을 주입받습니다. 인자를 생략하면 기본값을 씁니다.
     public init(
         decelerationRate: CGFloat = 0.99,
         springDampingRatio: CGFloat = 0.85,
         animationDuration: TimeInterval = 0.4,
         overDragLimit: CGFloat = 64,
-        animatesInitialAppearance: Bool = true
+        animatesInitialAppearance: Bool = true,
+        scrollingExpandsSheet: Bool = true
     ) {
         self.decelerationRate = decelerationRate
         self.springDampingRatio = springDampingRatio
         self.animationDuration = animationDuration
         self.overDragLimit = overDragLimit
         self.animatesInitialAppearance = animatesInitialAppearance
+        self.scrollingExpandsSheet = scrollingExpandsSheet
     }
 
     /// 지도 위 시트에 맞춘 기본 움직임입니다.

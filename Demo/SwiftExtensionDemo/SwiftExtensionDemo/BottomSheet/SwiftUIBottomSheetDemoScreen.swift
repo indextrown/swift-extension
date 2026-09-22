@@ -20,6 +20,9 @@ struct SwiftUIBottomSheetDemoScreen: View {
     @State private var viewModel = MapDemoViewModel()
     @State private var detent: BottomSheetDetent.Identifier = .tip
 
+    /// 시트 안의 목록을 위로 끌 때 시트가 먼저 올라갈지(Apple 지도 방식), 목록만 스크롤될지 정합니다.
+    @State private var scrollingExpandsSheet = false
+
     /// 시트 위치예요. `onOffsetChange`가 시트가 움직이는 매 프레임 채워 줍니다.
     @State private var sheetOffset: CGFloat?
 
@@ -38,6 +41,15 @@ struct SwiftUIBottomSheetDemoScreen: View {
         }
         .navigationTitle("탭바 뒤 바텀시트 (SwiftUI)")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Toggle("스크롤이 시트를 올려요", isOn: self.$scrollingExpandsSheet)
+                } label: {
+                    Label("옵션", systemImage: "ellipsis.circle")
+                }
+            }
+        }
         .onAppear {
             self.viewModel.start()
         }
@@ -101,6 +113,7 @@ struct SwiftUIBottomSheetDemoScreen: View {
         .bottomSheet(
             detent: self.$detent,
             layout: Self.layout,
+            behavior: BottomSheetBehavior(scrollingExpandsSheet: self.scrollingExpandsSheet),
             onOffsetChange: { self.sheetOffset = $0 }
         ) {
             BottomSheetScrollView {

@@ -20,21 +20,33 @@ struct BottomSheetDemoScreen: View {
     /// 기본값이면 자식 화면이 화면 끝까지 내려가고 시트가 유리 너머로 비쳐 보입니다.
     @State private var isOpaqueTabBar = true
 
+    /// 시트 안의 목록을 위로 끌 때 시트가 먼저 올라갈지(Apple 지도 방식), 목록만 스크롤될지 정합니다.
+    @State private var scrollingExpandsSheet = false
+
     var body: some View {
         UIViewControllerContainer {
             Self.makeTabBarController()
         } update: { tabBarController in
             Self.applyTabBarStyle(to: tabBarController, isOpaque: self.isOpaqueTabBar)
+            Self.host(in: tabBarController)?.scrollingExpandsSheet = self.scrollingExpandsSheet
         }
         .ignoresSafeArea()
         .navigationTitle("탭바 뒤 바텀시트")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Toggle("불투명 탭바", isOn: self.$isOpaqueTabBar)
-                    .toggleStyle(.button)
+                Menu {
+                    Toggle("불투명 탭바", isOn: self.$isOpaqueTabBar)
+                    Toggle("스크롤이 시트를 올려요", isOn: self.$scrollingExpandsSheet)
+                } label: {
+                    Label("옵션", systemImage: "ellipsis.circle")
+                }
             }
         }
+    }
+
+    private static func host(in tabBarController: UITabBarController) -> BottomSheetHostViewController? {
+        return tabBarController.viewControllers?.first as? BottomSheetHostViewController
     }
 
     private static func makeTabBarController() -> UITabBarController {

@@ -14,14 +14,15 @@ private struct SheetFixture {
     init(
         layout: BottomSheetLayout = .standard,
         initialDetent: BottomSheetDetent.Identifier = .tip,
-        contentMode: BottomSheetContentMode = .static
+        contentMode: BottomSheetContentMode = .static,
+        behavior: BottomSheetBehavior = BottomSheetBehavior(animatesInitialAppearance: false)
     ) {
         self.content = UIViewController()
         self.sheet = BottomSheetController(
             contentViewController: self.content,
             layout: layout,
             initialDetent: initialDetent,
-            behavior: BottomSheetBehavior(animatesInitialAppearance: false),
+            behavior: behavior,
             contentMode: contentMode
         )
         self.host = UIViewController()
@@ -40,6 +41,17 @@ private struct SheetFixture {
     func offset(for identifier: BottomSheetDetent.Identifier) -> CGFloat {
         let detent = self.sheet.layout.detent(for: identifier)!
         return self.sheet.layout.offset(for: detent, availableHeight: self.availableHeight)
+    }
+
+    /// 콘텐츠 안에 화면보다 긴 스크롤뷰를 넣고 시트가 따라가게 합니다. 안전 영역 보정을 꺼서 맨 위가 0이 되게 해요.
+    func trackTallScrollView() -> UIScrollView {
+        let scrollView = UIScrollView(frame: self.content.view.bounds)
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentSize = CGSize(width: scrollView.bounds.width, height: scrollView.bounds.height * 4)
+        self.content.view.addSubview(scrollView)
+        self.sheet.track(scrollView: scrollView)
+
+        return scrollView
     }
 }
 
@@ -226,5 +238,37 @@ func staticContentSafeAreaEndsAtHostSafeBottom() {
     let fixture = SheetFixture(contentMode: .fitToBounds)
 
     #expect(fixture.content.additionalSafeAreaInsets.bottom == 0)
+}
+
+@Test("스크롤이 시트를 올리는 모드(기본값)에서는 가장 높은 단계 아래에서 스크롤을 맨 위에 붙잡아요") @MainActor
+func trackedScrollIsPinnedBelowHighestDetentByDefault() {
+    let fixture = SheetFixture(initialDetent: .tip)
+    let scrollView = fixture.trackTallScrollView()
+
+    #expect(BottomSheetBehavior.default.scrollingExpandsSheet)
+
+    scrollView.contentOffset = CGPoint(x: 0, y: 120)
+    #expect(scrollView.contentOffset.y == 0)
+
+    /// 가장 높은 단계에 닿으면 붙잡지 않아요.
+    fixture.sheet.move(to: .full, animated: false)
+    scrollView.contentOffset = CGPoint(x: 0, y: 120)
+    #expect(scrollView.contentOffset.y == 120)
+}
+
+@Test("스크롤이 시트를 올리지 않는 모드에서는 어느 단계에서든 스크롤이 자유로워요") @MainActor
+func trackedScrollIsFreeWhenScrollingDoesNotExpandSheet() {
+    let fixture = SheetFixture(
+        initialDetent: .tip,
+        behavior: BottomSheetBehavior(animatesInitialAppearance: false, scrollingExpandsSheet: false)
+    )
+    let scrollView = fixture.trackTallScrollView()
+
+    scrollView.contentOffset = CGPoint(x: 0, y: 120)
+    #expect(scrollView.contentOffset.y == 120)
+
+    fixture.sheet.move(to: .half, animated: false)
+    scrollView.contentOffset = CGPoint(x: 0, y: 240)
+    #expect(scrollView.contentOffset.y == 240)
 }
 #endif

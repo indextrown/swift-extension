@@ -20,7 +20,8 @@ extension View {
     ///
     /// 콘텐츠에 스크롤이 필요하면 `ScrollView` 대신 `BottomSheetScrollView`를 씁니다.
     /// 시트가 다 올라가기 전에는 스크롤이 잠기고 시트가 움직이며, 다 올라간 뒤 맨 위에서
-    /// 아래로 끌면 다시 시트로 넘어옵니다.
+    /// 아래로 끌면 다시 시트로 넘어옵니다. 스크롤이 시트를 올리지 않게 하려면
+    /// `behavior`의 `scrollingExpandsSheet`를 `false`로 둡니다.
     ///
     /// ```swift
     /// @State private var detent: BottomSheetDetent.Identifier = .tip
@@ -302,11 +303,16 @@ struct BottomSheetOverlay<Content: View>: View {
         return self.currentDetent.anchor == .hidden && self.drag == nil
     }
 
-    /// 시트가 가장 높은 단계 아래에 있거나 손가락이 시트를 움직이는 동안은 콘텐츠 스크롤을 잠급니다.
+    /// 손가락이 시트를 움직이는 동안, 그리고 스크롤이 시트를 올리는 모드에서 시트가 가장 높은 단계 아래에 있을 때
+    /// 콘텐츠 스크롤을 잠급니다.
     private var isScrollDisabled: Bool {
         guard self.scrollState.isPresent else { return false }
 
-        return self.isScrollLockedByDrag || self.offset > self.highestOffset + 0.5
+        if self.isScrollLockedByDrag {
+            return true
+        }
+
+        return self.behavior.scrollingExpandsSheet && self.offset > self.highestOffset + 0.5
     }
 
 
@@ -441,9 +447,9 @@ struct BottomSheetOverlay<Content: View>: View {
 
     /// 시트를 끄는 동안 따라 움직입니다.
     ///
-    /// 손잡이에서 시작한 끌기는 언제나 시트를 움직입니다. 콘텐츠에서 시작한 끌기는 시트가 가장 높은
-    /// 단계 아래에 있으면 시트를, 가장 높은 단계에 있으면 스크롤을 움직입니다. 스크롤이 맨 위에
-    /// 닿은 채로 아래로 끌면 시트로 넘어옵니다.
+    /// 손잡이에서 시작한 끌기는 언제나 시트를 움직입니다. 콘텐츠에서 시작한 끌기는 스크롤이 시트를
+    /// 올리는 모드에서 시트가 가장 높은 단계 아래에 있으면 시트를, 그 밖에는 스크롤을 움직입니다.
+    /// 스크롤이 맨 위에 닿은 채로 아래로 끌면 시트로 넘어옵니다.
     private func dragChanged(_ value: DragGesture.Value, fromHandle: Bool) {
         if self.drag == nil {
             let isHorizontal = abs(value.translation.width) > abs(value.translation.height)
@@ -494,8 +500,10 @@ struct BottomSheetOverlay<Content: View>: View {
     private func startsAsSheetDrag(draggingDown: Bool) -> Bool {
         guard self.scrollState.isPresent else { return true }
 
-        /// 가장 높은 단계 아래에 있으면 언제나 시트가 움직입니다.
-        guard self.offset <= self.highestOffset + 0.5 else { return true }
+        /// 스크롤이 시트를 올리는 모드에서는 가장 높은 단계 아래에 있으면 언제나 시트가 움직입니다.
+        if self.behavior.scrollingExpandsSheet, self.offset > self.highestOffset + 0.5 {
+            return true
+        }
 
         return self.scrollState.isAtTop && draggingDown
     }

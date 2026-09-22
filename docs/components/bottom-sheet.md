@@ -43,7 +43,7 @@ UIKit의 `UISheetPresentationController`는 `present`로 띄워요. 창 전체�
 | `UIComponentsCore` | `BottomSheetAnchor.swift` | 단계의 높이를 재는 방법(`height`, `fraction`, `topInset`, `hidden`)과 offset 계산 |
 | `UIComponentsCore` | `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden` 프리셋 |
 | `UIComponentsCore` | `BottomSheetLayout.swift` | 단계 목록. 가장 가까운 단계, 위·아래 단계, 저항, 속도 투영, 뒷판 진행률 |
-| `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계 |
+| `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계, 스크롤이 시트를 올릴지 |
 | `UIKitExtension` | `BottomSheetAppearance.swift` | 배경색, 모서리, 손잡이, 그림자, 뒷판 (UIKit 타입) |
 | `UIKitExtension` | `BottomSheetSurfaceView.swift` | 시트 겉면과 손잡이 View. 그림자 경로, VoiceOver 조작 |
 | `UIKitExtension` | `BottomSheetControllerDelegate.swift` | 끌기 시작·이동·도착 단계 결정·단계 변경 콜백 |
@@ -133,7 +133,9 @@ sheet.view.bottom == host.bottom            ← 안전 영역이 아니라 View 
 
 ## 스크롤뷰 따라가기
 
-`track(scrollView:)`로 넘긴 스크롤뷰와 시트의 팬 제스처를 **동시에 인식**시키고, 손가락 하나가 둘 중 무엇을 움직일지 매 프레임 정해요.
+`track(scrollView:)`로 넘긴 스크롤뷰와 시트의 팬 제스처를 **동시에 인식**시키고, 손가락 하나가 둘 중 무엇을 움직일지 매 프레임 정해요. 손잡이처럼 스크롤뷰 **밖**에서 시작한 끌기는 언제나 시트를 움직여요.
+
+기본값(`BottomSheetBehavior.scrollingExpandsSheet == true`)은 Apple 지도와 `UISheetPresentationController`처럼 스크롤이 시트를 먼저 올려요.
 
 | 상황 | 움직이는 것 |
 | --- | --- |
@@ -141,6 +143,15 @@ sheet.view.bottom == host.bottom            ← 안전 영역이 아니라 View 
 | 시트가 가장 높은 단계에 있고, 스크롤이 맨 위가 아니에요 | 스크롤 |
 | 시트가 가장 높은 단계에 있고, 스크롤이 맨 위에서 아래로 끌려요 | 시트 |
 | 시트를 가장 높은 단계 너머로 밀고, 스크롤할 내용이 남았어요 | 스크롤로 넘겨요 |
+
+`scrollingExpandsSheet`를 `false`로 두면 스크롤뷰 위에서 위로 끄는 동작은 시트가 어느 단계에 있든 **스크롤**을 움직여요. 시트는 손잡이나 스크롤뷰 밖을 끌어야 올라가요. 스크롤이 맨 위에 닿은 채로 아래로 끌면 시트가 내려오는 건 같아요. `UISheetPresentationController`의 `prefersScrollingExpandsWhenScrolledToEdge = false`와 같은 동작이에요.
+
+| 상황 | 움직이는 것 |
+| --- | --- |
+| 스크롤뷰 위에서 위로 끌어요 | 스크롤 |
+| 스크롤이 맨 위가 아닌데 아래로 끌어요 | 스크롤 |
+| 스크롤이 맨 위에서 아래로 끌려요 | 시트 |
+| 손잡이나 스크롤뷰 밖을 끌어요 | 시트 |
 
 - 스크롤을 붙잡을 때 `isScrollEnabled`를 끄지 않아요. 끄면 진행 중인 터치가 취소돼 손가락이 끊겨요. 대신 `contentOffset`을 KVO로 지켜보며 매번 맨 위로 되돌려요.
 - 붙잡는 동안 세로 스크롤 인디케이터를 숨기고, 손을 떼면 원래 값으로 돌려요.
@@ -178,6 +189,7 @@ let sheet = BottomSheetController(
 | `animationDuration` | 0.4s | 단계 사이 이동 시간. 대리자에서 다른 값을 함께 움직일 때 같은 길이를 써요 |
 | `overDragLimit` | 64 | 한계를 넘어 끌 때 따라오는 최대 거리. `tanh`로 점점 덜 따라와요 |
 | `animatesInitialAppearance` | true | 처음 붙을 때 아래에서 올라오는 애니메이션 |
+| `scrollingExpandsSheet` | true | 스크롤뷰를 위로 끌 때 시트가 먼저 올라갈지. `false`면 스크롤만 움직이고 시트는 손잡이로 옮겨요 |
 
 뒷판(`backdrop`)은 기본으로 없어요. 지도처럼 뒤 화면을 계속 조작해야 하는 곳이 기본 사용처라서요. 켜면 시트가 올라갈수록 진해지고, 탭하면 정한 단계로 내려가요.
 
