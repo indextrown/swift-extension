@@ -51,6 +51,14 @@ extension DemoItem {
             systemImage: "rectangle.bottomthird.inset.filled"
         ) {
             BottomSheetDemoScreen()
+        },
+        DemoItem(
+            id: "native-sheet",
+            title: "애플 기본 시트",
+            subtitle: "UISheetPresentationController · UIKit",
+            systemImage: "rectangle.bottomhalf.inset.filled"
+        ) {
+            NativeSheetDemoScreen()
         }
     ]
 
@@ -63,6 +71,14 @@ extension DemoItem {
             systemImage: "rectangle.bottomthird.inset.filled"
         ) {
             SwiftUIBottomSheetDemoScreen()
+        },
+        DemoItem(
+            id: "native-sheet-swiftui",
+            title: "애플 기본 시트",
+            subtitle: "sheet + presentationDetents · SwiftUI",
+            systemImage: "rectangle.bottomhalf.inset.filled"
+        ) {
+            SwiftUINativeSheetDemoScreen()
         }
     ]
 }
