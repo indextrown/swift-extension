@@ -250,7 +250,7 @@ struct MapScreen: View {
 - `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. UIKit의 `move(to:)`와 `currentDetent`를 하나로 합친 거예요.
 - 스크롤이 필요한 콘텐츠는 **`ScrollView` 대신 `BottomSheetScrollView`를 써요.** SwiftUI `ScrollView`는 스크롤 위치를 바깥에 알려 주지 않아서, 시트가 "맨 위에서 아래로 끌었다"를 알 방법이 없어요. 이 포장이 위치를 `PreferenceKey`로 올려 보내요.
 - 단계·레이아웃·움직임은 UIKit 판과 **같은 타입**(`BottomSheetLayout`, `BottomSheetBehavior`)을 써요. 모양만 `BottomSheetStyle`로 따로 있어요. SwiftUI 타입(`Color`, `ShapeStyle`)을 쓰기 때문이에요.
-- `onOffsetChange`는 끄는 동안만 와요. UIKit의 `didMoveTo`와 같아요.
+- `onOffsetChange`는 끄는 동안 매 프레임 오고, 손을 뗀 뒤나 `detent`를 바꿔 옮길 때는 **도착 위치를 애니메이션 블록 안에서 한 번** 더 와요. 받은 값을 `@State`에 넣고 버튼 위치나 지도 여백을 거기 묶으면 시트와 나란히 움직여요. UIKit의 `didMoveTo`(끄는 동안) + `didChangeDetent`(도착)를 하나로 합친 셈이에요.
 - 손잡이는 VoiceOver `adjustable` 요소이고, 동작 줄이기가 켜져 있으면 스프링 대신 완만한 곡선을 써요.
 
 UIKit 판과 다른 점이에요.
@@ -262,7 +262,7 @@ UIKit 판과 다른 점이에요.
 | 스크롤 잠그기 | `contentOffset`을 KVO로 되돌려요 | `scrollDisabled`로 잠가요. 잠기는 순간 진행 중인 스크롤이 끊겨요 |
 | 스크롤 → 시트 (맨 위에서 아래로) | 어떤 `UIScrollView`든 `track(scrollView:)` | `BottomSheetScrollView`를 쓴 콘텐츠만 |
 | 시트 → 스크롤 (가장 높은 단계 너머로 밀 때) | 스크롤로 넘겨요 | 넘기지 않고 저항만 줘요. 손을 떼면 가장 높은 단계에 멈추고 그 뒤에 스크롤이 돼요 |
-| 콘텍스트 없는 상태 읽기 | `currentOffset`, `availableHeight`, `offset(for:)` | 바인딩과 `onOffsetChange`만. 도착 위치가 필요하면 `layout.offset(for:availableHeight:)`에 부모 안전 영역 높이를 넣어요 |
+| 위치 읽기 | `currentOffset`, `availableHeight`, `offset(for:)` | `onOffsetChange`가 끄는 동안과 도착 시점의 offset을 줘요. 높이가 필요하면 `GeometryReader`로 부모 안전 영역 높이를 재요 |
 
 ## 검증 방법
 

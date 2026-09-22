@@ -38,8 +38,10 @@ extension View {
     ///   - allowedDetents: 지금 멈출 수 있는 단계의 이름입니다. `nil`이면 전부입니다.
     ///   - style: 표시 속성입니다.
     ///   - behavior: 손을 따라오고 단계 사이를 옮기는 방식입니다.
-    ///   - onOffsetChange: 사용자가 끄는 동안 위치가 바뀔 때마다 부모 안전 영역 위쪽 끝에서
-    ///     시트 위쪽 끝까지의 거리를 전달합니다. 프로그램으로 옮기는 동안에는 오지 않습니다.
+    ///   - onOffsetChange: 시트 위치(부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리)를 전달합니다.
+    ///     사용자가 끄는 동안은 매 프레임, 손을 뗀 뒤나 `detent`를 바꿔 옮길 때는 도착 위치를 한 번
+    ///     애니메이션 블록 안에서 전달합니다. 받은 값을 `@State`에 넣으면 그 값에 묶인 View가 시트와
+    ///     나란히 움직입니다.
     ///   - content: 시트 안에 표시할 내용입니다.
     public func bottomSheet<Content: View>(
         detent: Binding<BottomSheetDetent.Identifier>,
@@ -314,6 +316,7 @@ struct BottomSheetOverlay<Content: View>: View {
 
         guard self.behavior.animatesInitialAppearance, self.reduceMotion == false else {
             self.offset = target
+            self.onOffsetChange?(target)
             return
         }
 
@@ -321,6 +324,7 @@ struct BottomSheetOverlay<Content: View>: View {
 
         withAnimation(self.animation(velocity: 0, distance: 0)) {
             self.offset = target
+            self.onOffsetChange?(target)
         }
     }
 
@@ -334,6 +338,7 @@ struct BottomSheetOverlay<Content: View>: View {
         guard abs(self.offset - target) > 0.5 else { return }
 
         self.offset = target
+        self.onOffsetChange?(target)
     }
 
     /// 바인딩이 바뀌면 그 단계로 옮깁니다. 이미 그 자리면 아무 일도 하지 않습니다.
@@ -346,6 +351,7 @@ struct BottomSheetOverlay<Content: View>: View {
 
         withAnimation(self.animation(velocity: 0, distance: target - self.offset)) {
             self.offset = target
+            self.onOffsetChange?(target)
         }
     }
 
@@ -511,8 +517,10 @@ struct BottomSheetOverlay<Content: View>: View {
         )
         let targetOffset = self.targetOffset(for: target)
 
+        /// 도착 위치도 같은 애니메이션 블록 안에서 알립니다. 받는 쪽이 `@State`에 넣으면 시트와 나란히 움직입니다.
         withAnimation(self.animation(velocity: velocity, distance: targetOffset - releasedAt)) {
             self.offset = targetOffset
+            self.onOffsetChange?(targetOffset)
         }
 
         /// offset을 먼저 도착점으로 바꿔 두어야 바인딩 변화가 같은 자리로 다시 애니메이션하지 않습니다.
