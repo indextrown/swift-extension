@@ -40,6 +40,10 @@ final class BottomSheetHostViewController: UIViewController {
     /// 처음 받은 위치로 지도를 한 번만 옮기기 위한 표시입니다.
     private var hasCenteredOnUser = false
 
+    /// 마지막으로 반영한 "시트가 가린 높이"입니다. 시트가 움직이면 이 값과의 차이만큼 지도 중심을 밉니다.
+    /// 아직 반영한 적이 없으면 `nil`이고, 첫 값은 기준만 잡고 밀지 않습니다.
+    private var appliedCoveredHeight: CGFloat?
+
 
 
     // MARK: - Life Cycle
@@ -178,10 +182,38 @@ final class BottomSheetHostViewController: UIViewController {
         guard let coordinate = self.viewModel.state.coordinate else { return }
 
         let region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 1200, longitudinalMeters: 1200)
-        let coveredBySheet = self.sheet.availableHeight - self.sheet.offset(for: self.sheet.currentDetent)
-        let padding = UIEdgeInsets(top: 0, left: 0, bottom: max(coveredBySheet, 0), right: 0)
+        let coveredBySheet = max(self.sheet.availableHeight - self.sheet.offset(for: self.sheet.currentDetent), 0)
 
+        /// MKMapView는 자기 안전 영역(내비게이션 바, 탭바)을 이미 빼고 가운데를 잡으므로 시트가 가린 높이만 더합니다.
+        let padding = UIEdgeInsets(top: 0, left: 0, bottom: coveredBySheet, right: 0)
+
+        self.appliedCoveredHeight = coveredBySheet
         self.mapView.setVisibleMapRect(Self.mapRect(for: region), edgePadding: padding, animated: animated)
+    }
+
+    /// 시트가 가린 높이가 바뀐 만큼 지도 중심을 밀어, 보이는 영역의 가운데에 있던 지점이 계속 가운데에 있게 합니다.
+    ///
+    /// 시트가 Δ만큼 더 가리면 보이는 영역의 중심은 Δ/2만큼 올라갑니다. 지금 그 자리에 그려진 지점을 새 중심으로
+    /// 삼으면 사용자가 보던 곳이 그대로 가운데에 남습니다. 내 위치로 되돌리지 않으므로 사용자가 지도를 옮겨 둔
+    /// 상태도 유지돼요. `SwiftUI` 판에서 `Map`의 안전 영역이 바뀔 때 MapKit이 하는 일과 같은 결과예요.
+    private func followSheet(coveredBySheet covered: CGFloat, animated: Bool) {
+        guard let applied = self.appliedCoveredHeight else {
+            self.appliedCoveredHeight = covered
+            return
+        }
+
+        let delta = covered - applied
+        self.appliedCoveredHeight = covered
+
+        guard abs(delta) > 0.5 else { return }
+
+        /// 기준점은 `bounds` 중심이 아니라 지도가 실제로 가운데로 삼는 지점이어야 합니다. MKMapView의
+        /// `centerCoordinate`는 안전 영역을 뺀 영역의 중심에 놓이므로, 그 점에서 Δ/2만큼 아래 지점을 새 중심으로 잡습니다.
+        let currentCenter = self.mapView.convert(self.mapView.centerCoordinate, toPointTo: self.mapView)
+        let shifted = CGPoint(x: currentCenter.x, y: currentCenter.y + delta / 2)
+        let center = self.mapView.convert(shifted, toCoordinateFrom: self.mapView)
+
+        self.mapView.setCenter(center, animated: animated)
     }
 
     private static func mapRect(for region: MKCoordinateRegion) -> MKMapRect {
@@ -223,5 +255,10 @@ extension BottomSheetHostViewController: BottomSheetControllerDelegate {
 
     func bottomSheet(_ controller: BottomSheetController, didMoveTo offset: CGFloat) {
         self.report(extra: "dragging")
+    }
+
+    /// 시트가 가린 높이 하나만 받아 지도를 따라가게 합니다. 끄는 동안은 즉시, 손을 뗀 뒤 도착값은 애니메이션으로 와요.
+    func bottomSheet(_ controller: BottomSheetController, didChangeCoveredHeight height: CGFloat, animated: Bool) {
+        self.followSheet(coveredBySheet: height, animated: animated)
     }
 }

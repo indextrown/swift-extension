@@ -69,6 +69,8 @@ cp Demo/SwiftExtensionDemo/Config/Local.xcconfig.example Demo/SwiftExtensionDemo
 
 배경은 MapKit 지도예요. 화면이 열리면 위치 권한을 묻고 현재 위치로 지도를 옮겨요. `Locate` 버튼을 누르면 다시 현재 위치로 가요. 위치는 UIKit 쪽 `MapHostViewModel`(클로저), SwiftUI 쪽 `MapDemoViewModel`(`@Observable`)이 각각 독립적으로 다뤄요.
 
+시트를 올리고 내리면 지도도 따라가요. 보이는 영역의 가운데에 있던 지점이 계속 가운데에 남도록 시트가 더 가린 높이의 절반만큼 중심을 밀어요. UIKit 판은 델리게이트 `didMoveTo`(끄는 동안)와 `didChangeDetent`(도착)에서 `setCenter`로, SwiftUI 판은 `Map`의 `safeAreaInset`이 단계에 따라 바뀌면 MapKit이 알아서 해요.
+
 시뮬레이터에서는 위치가 비어 있을 수 있어요. 아래처럼 위치를 넣어 두면 돼요.
 
 ```bash
