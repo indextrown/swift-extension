@@ -35,3 +35,6 @@ Pods/
 .env
 .env.*
 !.env.example
+
+# Per-developer signing (see Demo/*/Config/Local.xcconfig.example)
+Local.xcconfig
