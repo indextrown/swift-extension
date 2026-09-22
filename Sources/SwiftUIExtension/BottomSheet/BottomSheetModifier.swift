@@ -367,7 +367,9 @@ struct BottomSheetOverlay<Content: View>: View {
             among: self.allowedDetents
         )
 
-        self.detent = target.identifier
+        withAnimation(self.animation(velocity: 0, distance: 0)) {
+            self.detent = target.identifier
+        }
     }
 
     private func step(up: Bool) {
@@ -377,21 +379,28 @@ struct BottomSheetOverlay<Content: View>: View {
 
         guard let next else { return }
 
-        self.detent = next.identifier
+        withAnimation(self.animation(velocity: 0, distance: 0)) {
+            self.detent = next.identifier
+        }
     }
 
     private func collapse(using backdrop: BottomSheetBackdropStyle) {
+        let target: BottomSheetDetent.Identifier
+
         if let identifier = backdrop.largestUndimmedDetent,
            let detent = self.layout.detent(for: identifier),
            self.layout.detents(among: self.allowedDetents).contains(detent) {
-            self.detent = identifier
-            return
+            target = identifier
+        } else {
+            target = self.layout.lowestDetent(
+                availableHeight: self.referenceHeight,
+                among: self.allowedDetents
+            ).identifier
         }
 
-        self.detent = self.layout.lowestDetent(
-            availableHeight: self.referenceHeight,
-            among: self.allowedDetents
-        ).identifier
+        withAnimation(self.animation(velocity: 0, distance: 0)) {
+            self.detent = target
+        }
     }
 
     /// 단계 사이를 옮기는 애니메이션입니다. 손을 뗀 속도를 이어받고, 동작 줄이기가 켜져 있으면 스프링을 생략합니다.
@@ -517,15 +526,16 @@ struct BottomSheetOverlay<Content: View>: View {
         )
         let targetOffset = self.targetOffset(for: target)
 
-        /// 도착 위치도 같은 애니메이션 블록 안에서 알립니다. 받는 쪽이 `@State`에 넣으면 시트와 나란히 움직입니다.
+        /// 도착 위치와 바인딩을 같은 애니메이션 블록 안에서 바꿉니다. `onOffsetChange`나 `detent`에 묶인
+        /// 바깥 View가 시트와 나란히 움직여요. offset을 먼저 도착점으로 바꿔 두어야 바인딩 변화가
+        /// 같은 자리로 다시 애니메이션하지 않습니다.
         withAnimation(self.animation(velocity: velocity, distance: targetOffset - releasedAt)) {
             self.offset = targetOffset
             self.onOffsetChange?(targetOffset)
-        }
 
-        /// offset을 먼저 도착점으로 바꿔 두어야 바인딩 변화가 같은 자리로 다시 애니메이션하지 않습니다.
-        if self.detent != target.identifier {
-            self.detent = target.identifier
+            if self.detent != target.identifier {
+                self.detent = target.identifier
+            }
         }
     }
 }

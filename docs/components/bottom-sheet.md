@@ -251,7 +251,7 @@ struct MapScreen: View {
 }
 ```
 
-- `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. UIKit의 `move(to:)`와 `currentDetent`를 하나로 합친 거예요.
+- `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. UIKit의 `move(to:)`와 `currentDetent`를 하나로 합친 거예요. 손을 뗀 뒤 바뀌는 `detent`는 시트 애니메이션 블록 **안에서** 바뀌므로 `detent`에 묶인 바깥 View도 시트와 같이 움직여요.
 - 스크롤이 필요한 콘텐츠는 **`ScrollView` 대신 `BottomSheetScrollView`를 써요.** SwiftUI `ScrollView`는 스크롤 위치를 바깥에 알려 주지 않아서, 시트가 "맨 위에서 아래로 끌었다"를 알 방법이 없어요. 이 포장이 위치를 `PreferenceKey`로 올려 보내요.
 - 단계·레이아웃·움직임은 UIKit 판과 **같은 타입**(`BottomSheetLayout`, `BottomSheetBehavior`)을 써요. 모양만 `BottomSheetStyle`로 따로 있어요. SwiftUI 타입(`Color`, `ShapeStyle`)을 쓰기 때문이에요.
 - `onOffsetChange`는 끄는 동안 매 프레임 오고, 손을 뗀 뒤나 `detent`를 바꿔 옮길 때는 **도착 위치를 애니메이션 블록 안에서 한 번** 더 와요. 받은 값을 `@State`에 넣고 버튼 위치나 지도 여백을 거기 묶으면 시트와 나란히 움직여요. UIKit의 `didMoveTo`(끄는 동안) + `didChangeDetent`(도착)를 하나로 합친 셈이에요.
