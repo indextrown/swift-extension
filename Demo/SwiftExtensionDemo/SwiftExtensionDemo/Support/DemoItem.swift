@@ -54,6 +54,15 @@ extension DemoItem {
         }
     ]
 
-    /// `SwiftUIExtension` 컴포넌트 데모입니다. 컴포넌트가 생기면 여기에 추가합니다.
-    static let swiftUI: [DemoItem] = []
+    /// `SwiftUIExtension` 컴포넌트 데모입니다.
+    static let swiftUI: [DemoItem] = [
+        DemoItem(
+            id: "bottom-sheet-swiftui",
+            title: "탭바 뒤 바텀시트",
+            subtitle: "bottomSheet(detent:) · SwiftUI",
+            systemImage: "rectangle.bottomthird.inset.filled"
+        ) {
+            SwiftUIBottomSheetDemoScreen()
+        }
+    ]
 }
