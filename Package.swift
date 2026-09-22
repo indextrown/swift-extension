@@ -24,6 +24,10 @@ let package = Package(
             targets: ["SwiftExtension"]
         ),
         .library(
+            name: "UIComponentsCore",
+            targets: ["UIComponentsCore"]
+        ),
+        .library(
             name: "UIKitExtension",
             targets: ["UIKitExtension"]
         ),
@@ -39,8 +43,15 @@ let package = Package(
             exclude: ["Stack"]
         ),
         .target(name: "SwiftExtension"),
-        .target(name: "UIKitExtension"),
-        .target(name: "SwiftUIExtension"),
+        .target(name: "UIComponentsCore"),
+        .target(
+            name: "UIKitExtension",
+            dependencies: ["UIComponentsCore"]
+        ),
+        .target(
+            name: "SwiftUIExtension",
+            dependencies: ["UIComponentsCore"]
+        ),
         .testTarget(
             name: "AlgorithmTests",
             dependencies: ["Algorithm"]
@@ -52,6 +63,10 @@ let package = Package(
         .testTarget(
             name: "SwiftExtensionTests",
             dependencies: ["SwiftExtension"]
+        ),
+        .testTarget(
+            name: "UIComponentsCoreTests",
+            dependencies: ["UIComponentsCore"]
         ),
         .testTarget(
             name: "UIKitExtensionTests",

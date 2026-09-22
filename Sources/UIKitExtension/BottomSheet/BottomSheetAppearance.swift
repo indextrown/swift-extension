@@ -6,6 +6,7 @@
 //
 
 #if canImport(UIKit) && !os(watchOS) && !os(tvOS)
+import UIComponentsCore
 import UIKit
 
 /// 바텀시트의 표시 속성입니다.

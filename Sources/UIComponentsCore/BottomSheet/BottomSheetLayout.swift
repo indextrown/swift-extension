@@ -263,3 +263,43 @@ extension BottomSheetLayout {
         )
     }
 }
+
+
+
+// MARK: - Backdrop
+
+extension BottomSheetLayout {
+
+    /// 시트 뒤 판을 얼마나 어둡게 할지 0...1로 계산합니다.
+    ///
+    /// 가장 높은 단계에서 1, 어둡게 하지 않을 단계에서 0이 되도록 사이를 잇습니다.
+    /// `largestUndimmedDetent`가 `nil`이거나 레이아웃에 없으면 가장 낮은 단계를 기준으로 삼습니다.
+    ///
+    /// - Parameters:
+    ///   - offset: 현재 위치입니다.
+    ///   - availableHeight: 시트가 쓸 수 있는 안전 영역의 높이입니다.
+    ///   - largestUndimmedDetent: 이 단계와 그보다 낮은 단계에서는 0입니다.
+    /// - Returns: 0...1 사이의 진행률입니다.
+    /// - Complexity: O(n)입니다.
+    public func backdropProgress(
+        at offset: CGFloat,
+        availableHeight: CGFloat,
+        largestUndimmedDetent: BottomSheetDetent.Identifier? = nil
+    ) -> CGFloat {
+        let highest = self.offset(
+            for: self.highestDetent(availableHeight: availableHeight),
+            availableHeight: availableHeight
+        )
+        let undimmedDetent = largestUndimmedDetent.flatMap { self.detent(for: $0) }
+            ?? self.lowestDetent(availableHeight: availableHeight)
+        let undimmed = self.offset(for: undimmedDetent, availableHeight: availableHeight)
+
+        guard undimmed > highest else {
+            return offset <= highest ? 1 : 0
+        }
+
+        let progress = (undimmed - offset) / (undimmed - highest)
+
+        return min(max(progress, 0), 1)
+    }
+}

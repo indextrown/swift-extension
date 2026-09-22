@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import UIKitExtension
+import UIComponentsCore
 
 private let availableHeight: CGFloat = 800
 
@@ -190,4 +190,36 @@ func targetDetentUsesVelocityProjection() {
     #expect(behavior.resistedDistance(100) < 64)
     #expect(behavior.resistedDistance(10_000) <= 64)
     #expect(behavior.resistedDistance(10_000) > 63.9)
+}
+
+// MARK: - Backdrop
+
+@Test("뒷판은 가장 낮은 단계에서 0, 가장 높은 단계에서 1이에요")
+func backdropProgressSpansLowestToHighest() {
+    let layout = BottomSheetLayout.standard
+
+    // tip=704, full=16
+    #expect(layout.backdropProgress(at: 704, availableHeight: availableHeight) == 0)
+    #expect(layout.backdropProgress(at: 16, availableHeight: availableHeight) == 1)
+    #expect(layout.backdropProgress(at: 360, availableHeight: availableHeight) == 0.5)
+    #expect(layout.backdropProgress(at: 900, availableHeight: availableHeight) == 0)
+    #expect(layout.backdropProgress(at: -50, availableHeight: availableHeight) == 1)
+}
+
+@Test("어둡게 하지 않을 단계를 정하면 그 아래에서는 0이에요")
+func backdropProgressRespectsUndimmedDetent() {
+    let layout = BottomSheetLayout.standard
+
+    // half=400, full=16
+    #expect(layout.backdropProgress(at: 400, availableHeight: availableHeight, largestUndimmedDetent: .half) == 0)
+    #expect(layout.backdropProgress(at: 600, availableHeight: availableHeight, largestUndimmedDetent: .half) == 0)
+    #expect(layout.backdropProgress(at: 208, availableHeight: availableHeight, largestUndimmedDetent: .half) == 0.5)
+    #expect(layout.backdropProgress(at: 16, availableHeight: availableHeight, largestUndimmedDetent: .half) == 1)
+}
+
+@Test func backdropProgressWithSingleDetentIsBinary() {
+    let layout = BottomSheetLayout(detents: [.full()])
+
+    #expect(layout.backdropProgress(at: 16, availableHeight: availableHeight) == 1)
+    #expect(layout.backdropProgress(at: 100, availableHeight: availableHeight) == 0)
 }

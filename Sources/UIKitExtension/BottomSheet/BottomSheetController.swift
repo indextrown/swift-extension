@@ -6,6 +6,7 @@
 //
 
 #if canImport(UIKit) && !os(watchOS) && !os(tvOS)
+import UIComponentsCore
 import UIKit
 
 /// 부모 화면 안에 자식으로 붙어 탭바 뒤에서 올라오는 바텀시트입니다.
@@ -536,23 +537,13 @@ extension BottomSheetController {
     private func backdropAlpha(for offset: CGFloat) -> CGFloat {
         guard let backdrop = self.appearance.backdrop, self.availableHeight > 0 else { return 0 }
 
-        let highest = self.offset(for: self.layout.highestDetent(availableHeight: self.availableHeight))
-        let undimmed: CGFloat
+        let progress = self.layout.backdropProgress(
+            at: offset,
+            availableHeight: self.availableHeight,
+            largestUndimmedDetent: backdrop.largestUndimmedDetent
+        )
 
-        if let identifier = backdrop.largestUndimmedDetent,
-           let detent = self.layout.detent(for: identifier) {
-            undimmed = self.offset(for: detent)
-        } else {
-            undimmed = self.offset(for: self.layout.lowestDetent(availableHeight: self.availableHeight))
-        }
-
-        guard undimmed > highest else {
-            return offset <= highest ? backdrop.maximumAlpha : 0
-        }
-
-        let progress = (undimmed - offset) / (undimmed - highest)
-
-        return backdrop.maximumAlpha * min(max(progress, 0), 1)
+        return backdrop.maximumAlpha * progress
     }
 
     private func updateBackdrop(for offset: CGFloat) {

@@ -16,3 +16,7 @@
 /// ```
 ///
 /// On macOS the module still builds; it is simply empty.
+
+/// `UIComponentsCore`의 단계·레이아웃·움직임 타입을 다시 내보냅니다.
+/// `import UIKitExtension` 하나로 `BottomSheetLayout` 같은 타입을 쓸 수 있습니다.
+@_exported import UIComponentsCore

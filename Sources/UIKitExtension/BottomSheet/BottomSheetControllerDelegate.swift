@@ -6,6 +6,7 @@
 //
 
 #if canImport(UIKit) && !os(watchOS) && !os(tvOS)
+import UIComponentsCore
 import UIKit
 
 /// 바텀시트의 움직임을 소유자에게 알립니다.
