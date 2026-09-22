@@ -97,7 +97,7 @@ public struct BadgeStyle {
 ## 확인하는 방법
 
 - macOS의 `swift build`·`swift test`는 `#if canImport(UIKit)` 안쪽 코드를 **컴파일하지 않아요.** UIKit 코드를 바꿨으면 시뮬레이터 빌드와 테스트를 꼭 돌려요. 명령은 [테스트](../development/testing.md)에 있어요.
-- 제스처 손맛처럼 테스트로 잡기 어려운 동작은 시뮬레이터에서 눈으로 확인하고, 확인한 기기와 OS 버전을 PR에 적어요.
+- 제스처 손맛처럼 테스트로 잡기 어려운 동작은 `Demo/SwiftExtensionDemo` 앱에서 눌러 보고, 확인한 기기와 OS 버전을 PR에 적어요. 컴포넌트를 추가하면 `DemoListView`에 행을 하나 추가해요.
 - 표시 결과는 스크린샷이나 프리뷰로 확인하고, 확인한 플랫폼과 OS 버전을 PR에 적어요.
 - CI의 `Build`·`Test` 워크플로는 macOS 러너에서 `swift build`와 `swift test`를 돌려요. macOS에는 UIKit이 없어서 `#if canImport(UIKit)`로 감싼 코드는 **CI에서도 컴파일되지 않아요.**
 - `확인 필요`: iOS 시뮬레이터 빌드를 CI에 추가할지 여부. UIKit 컴포넌트가 들어가는 시점에 정해요. `xcodebuild -scheme UIKitExtension -destination 'platform=iOS Simulator,...'` 형태가 필요해요.

@@ -41,7 +41,7 @@ swift build
 swift build -c release
 ```
 
-Xcode에서 확인하려면 `Package.swift`를 열고 `⌘U`로 실행해요. 데모 앱은 `Demo/AlgorithmDemo/README.md`의 `xcodebuild` 명령을 따라요.
+Xcode에서 확인하려면 `Package.swift`를 열고 `⌘U`로 실행해요. 데모 앱은 두 개예요. macOS용 `Demo/AlgorithmDemo`와 iOS용 `Demo/SwiftExtensionDemo`이고, 각 폴더의 README에 `xcodebuild` 명령이 있어요.
 
 ## CI에서 도는 검증
 

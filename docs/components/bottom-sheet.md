@@ -207,7 +207,7 @@ func bottomSheet(_ controller: BottomSheetController, didChangeDetent detent: Bo
 | --- | --- | --- |
 | 위치 계산, 저항, 속도 투영 | `swift test --filter UIKitExtensionTests` | macOS, CI |
 | 자식 붙이기, 단계 이동, 허용 목록, 대리자, hidden 위치 | 아래 `xcodebuild test` | iOS 시뮬레이터 |
-| 제스처 손맛, 스크롤 핸드오프, 탭바 뒤 배치 | 데모 앱을 눈으로 확인 | iOS 시뮬레이터 |
+| 제스처 손맛, 스크롤 핸드오프, 탭바 뒤 배치 | `Demo/SwiftExtensionDemo` 앱을 눌러 봐요 | iOS 시뮬레이터 |
 
 ```bash
 xcodebuild test \
@@ -217,6 +217,8 @@ xcodebuild test \
 ```
 
 `-destination`의 기기 이름은 `xcrun simctl list devices available`에 있는 것으로 바꿔요. macOS `swift test`는 UIKit 코드를 컴파일하지 않으니, 컨트롤러를 바꿨으면 반드시 시뮬레이터 테스트를 돌려요.
+
+눌러 보는 검증은 데모 앱에서 해요. Xcode로 `Demo/SwiftExtensionDemo/SwiftExtensionDemo.xcodeproj`를 열어 실행하고, 목록의 `탭바 뒤 바텀시트`로 들어가요. 오른쪽 위 토글로 불투명 탭바와 기본 Liquid Glass 탭바를 바꿔 볼 수 있어요. 실행 방법은 [데모 README](../../Demo/SwiftExtensionDemo/README.md)에 있어요.
 
 ## 알려진 제한과 후속 과제
 

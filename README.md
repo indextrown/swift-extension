@@ -97,7 +97,7 @@ Sources/
 ├── UIKitExtension/    reusable UIKit components
 └── SwiftUIExtension/  reusable SwiftUI components
 Tests/                 one test target per product
-Demo/                  sample apps that depend on the local package
+Demo/                  sample apps: AlgorithmDemo (macOS), SwiftExtensionDemo (iOS)
 docs/                  architecture and development guides (Korean)
 ```
 
