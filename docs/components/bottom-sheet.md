@@ -305,7 +305,7 @@ xcodebuild test \
 
 | 항목 | 지금 | 후속 |
 | --- | --- | --- |
-| 애니메이션 중 위치 콜백 | 손으로 끄는 동안만 `didMoveTo` | `CADisplayLink`로 애니메이션 중에도 위치를 알리기 |
+| 애니메이션 중 위치 콜백 (UIKit) | 손으로 끄는 동안만 `didMoveTo`. 도착값은 `didChangeCoveredHeight(animated: true)`로 한 번 와요. SwiftUI 판은 `onOffsetChange`가 애니메이션 중에도 매 프레임 와요 | UIKit에서도 프레임별 값이 필요해지면 `CADisplayLink`로 알리기 |
 | 키보드 | 대응하지 않아요 | 키보드가 올라오면 시트를 함께 올리는 옵션 |
 | 가로 모드·iPad | 세로 바텀시트 하나 | 넓은 화면에서 옆으로 붙는 패널 레이아웃 |
 | 콘텐츠 크기 기반 단계 | 없어요 | `intrinsicContentSize`로 높이를 재는 anchor |
