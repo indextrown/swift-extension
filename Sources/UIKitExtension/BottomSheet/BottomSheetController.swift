@@ -283,8 +283,10 @@ public final class BottomSheetController: UIViewController {
         guard animated else {
             self.stopAnimation()
             self.updateDetent(detent)
-            self.setOffset(self.offset(for: detent))
+            let target = self.offset(for: detent)
+            self.setOffset(target)
             self.hostView?.layoutIfNeeded()
+            self.notifyCoveredHeight(offset: target, animated: false)
             return
         }
 
@@ -370,6 +372,13 @@ public final class BottomSheetController: UIViewController {
     private func setOffset(_ offset: CGFloat) {
         self.topConstraint?.constant = offset
         self.updateBackdrop(for: offset)
+    }
+
+    /// 시트가 가린 높이를 대리자에게 알립니다.
+    private func notifyCoveredHeight(offset: CGFloat, animated: Bool) {
+        let covered = max(self.availableHeight - offset, 0)
+
+        self.delegate?.bottomSheet(self, didChangeCoveredHeight: covered, animated: animated)
     }
 
     /// 안전 영역 아래쪽 여백입니다. 탭바와 홈 인디케이터 높이입니다.
@@ -535,6 +544,7 @@ public final class BottomSheetController: UIViewController {
         self.topConstraint?.constant = target
         self.hostView?.layoutIfNeeded()
         self.surfaceView.setShadowVisible(self.currentDetent.anchor != .hidden)
+        self.notifyCoveredHeight(offset: target, animated: false)
 
         let shouldAnimate = self.behavior.animatesInitialAppearance
             && UIAccessibility.isReduceMotionEnabled == false
@@ -735,6 +745,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
                     gesture.setTranslation(.zero, in: host)
                     self.restoreScrollIndicator()
                     self.delegate?.bottomSheet(self, didMoveTo: highest)
+                    self.notifyCoveredHeight(offset: highest, animated: false)
                     return
                 }
 
@@ -746,6 +757,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
                 )
                 self.setOffset(resisted)
                 self.delegate?.bottomSheet(self, didMoveTo: resisted)
+                self.notifyCoveredHeight(offset: resisted, animated: false)
 
             case .scroll:
                 /// 스크롤이 맨 위에 닿은 채로 아래로 끌면 시트가 이어서 내려옵니다.
@@ -966,6 +978,10 @@ extension BottomSheetController {
 
         self.animator = animator
         animator.startAnimation()
+
+        /// 애니메이터가 시작된 뒤에 알립니다. 시작 전에 알리면 대리자가 건 애니메이션이 바로 이어지는
+        /// `layoutIfNeeded()`에 끊길 수 있어요. MapKit의 `setCenter(animated:)`가 중간에 멈추는 것을 봤어요.
+        self.notifyCoveredHeight(offset: target, animated: true)
     }
 
     /// 진행 중인 애니메이션을 멈추고 지금 보이는 위치를 그대로 이어받습니다.

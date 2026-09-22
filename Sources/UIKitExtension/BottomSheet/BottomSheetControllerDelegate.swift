@@ -40,6 +40,20 @@ public protocol BottomSheetControllerDelegate: AnyObject {
         targetDetent: inout BottomSheetDetent.Identifier
     )
 
+    /// 시트가 가린 높이가 바뀔 때 호출합니다.
+    ///
+    /// 가린 높이는 부모 안전 영역 아래쪽 끝에서 시트 윗선까지의 거리, 즉 `availableHeight - offset`입니다.
+    /// 끄는 동안은 매 프레임 `animated == false`로, 손을 뗀 뒤나 `move(to:animated: true)`로 옮길 때는
+    /// 도착값을 `animated == true`로 한 번 알립니다. 처음 화면에 자리 잡을 때도 한 번 옵니다.
+    ///
+    /// 지도 여백처럼 시트 높이를 따라가야 하는 값 하나를 갱신할 때, `didMoveTo`와 `didChangeDetent`를
+    /// 둘 다 구현하고 도착 위치를 계산하는 대신 이것 하나로 처리할 수 있습니다.
+    ///
+    /// - Parameters:
+    ///   - height: 시트가 가린 높이입니다. 0 이상입니다.
+    ///   - animated: `true`면 시트가 이 값까지 `behavior.animationDuration` 동안 움직이는 중이니 같은 길이로 함께 움직이면 나란히 갑니다.
+    func bottomSheet(_ controller: BottomSheetController, didChangeCoveredHeight height: CGFloat, animated: Bool)
+
     /// 시트가 머무는 단계가 바뀌면 호출합니다.
     ///
     /// 도착 단계가 정해진 시점, 즉 이동 애니메이션이 시작되기 직전에 호출합니다. 같은 길이로
@@ -65,5 +79,7 @@ public extension BottomSheetControllerDelegate {
     ) {}
 
     func bottomSheet(_ controller: BottomSheetController, didChangeDetent detent: BottomSheetDetent) {}
+
+    func bottomSheet(_ controller: BottomSheetController, didChangeCoveredHeight height: CGFloat, animated: Bool) {}
 }
 #endif

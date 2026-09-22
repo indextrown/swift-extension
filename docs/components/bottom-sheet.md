@@ -206,18 +206,22 @@ SwiftUI 판은 `fitToBounds`만 있어요. `LazyVStack` 재배치가 가벼워�
 | `bottomSheet(_:didMoveTo:)` | 끄는 동안 위치가 바뀔 때마다 | 지도 카메라 여백처럼 시트 높이를 따라가는 값 |
 | `bottomSheet(_:willEndDraggingWithVelocity:targetDetent:)` | 손을 뗀 직후, 도착 단계가 계산된 뒤 | `targetDetent`를 바꿔 다른 단계로 보내기 |
 | `bottomSheet(_:didChangeDetent:)` | 도착 단계가 정해졐을 때 | 단계별 UI 갱신. 애니메이션 시작 시점이라 같은 길이로 함께 움직일 수 있어요 |
+| `bottomSheet(_:didChangeCoveredHeight:animated:)` | 끄는 동안 매 프레임(`animated: false`), 도착값이 정해질 때 한 번(`animated: true`), 처음 자리 잡을 때 한 번 | 지도 여백처럼 **시트가 가린 높이 하나에 묶이는 값**. 위 두 메서드를 합친 편의 콜백이에요 |
 
-`didMoveTo`는 손으로 끄는 동안만 와요. `move(to:)`나 손을 뗀 뒤의 애니메이션 중에는 오지 않아요. 그동안의 위치가 필요하면 `didChangeDetent`에서 같은 `animationDuration`으로 목표값까지 애니메이션해요. 목표 위치는 `controller.offset(for: detent)`로 구해요. 이 시점의 `currentOffset`은 아직 출발 위치예요.
+`didMoveTo`는 손으로 끄는 동안만 와요. 손을 뗀 뒤의 애니메이션 중에는 오지 않아요. 지도 여백처럼 시트가 가린 높이 하나에 묶이는 값은 `didChangeCoveredHeight`를 쓰면 끄는 동안과 도착 시점을 한 메서드로 받아요.
 
 ```swift
-func bottomSheet(_ controller: BottomSheetController, didChangeDetent detent: BottomSheetDetent) {
-    let visibleHeight = controller.availableHeight - controller.offset(for: detent)
+func bottomSheet(_ controller: BottomSheetController, didChangeCoveredHeight height: CGFloat, animated: Bool) {
+    // 시트가 더 가린 만큼의 절반을 밀면, 보이는 영역 가운데에 있던 지점이 계속 가운데에 남아요.
+    let delta = height - self.lastCoveredHeight
+    self.lastCoveredHeight = height
 
-    UIView.animate(withDuration: controller.behavior.animationDuration) {
-        self.mapView.layoutMargins.bottom = visibleHeight
-    }
+    let shifted = CGPoint(x: mapView.bounds.midX, y: mapView.bounds.midY + delta / 2)
+    mapView.setCenter(mapView.convert(shifted, toCoordinateFrom: mapView), animated: animated)
 }
 ```
+
+`didChangeDetent`에서 직접 하려면 도착 위치를 `controller.offset(for: detent)`로 구해요. 이 시점의 `currentOffset`은 아직 출발 위치예요.
 
 ## 접근성
 
