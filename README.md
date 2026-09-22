@@ -18,7 +18,7 @@ components live in their own targets so clients only link what they use.
 | `Algorithm` | Available | Data structures and algorithms. Currently `Stack`. |
 | `Labs` | Available | Experimental implementations and playgrounds. Not part of the public API surface yet. |
 | `SwiftExtension` | Available | Package-level entry point. Exposes `SwiftExtension.version`. |
-| `UIKitExtension` | Available | Reusable UIKit views and `UIView` / `UIViewController` extensions. No public declarations yet. |
+| `UIKitExtension` | Available | Reusable UIKit components. Currently `BottomSheetController`, a bottom sheet that rises from behind the tab bar. |
 | `SwiftUIExtension` | Available | Reusable SwiftUI views, `View` extensions, and view modifiers. No public declarations yet. |
 
 Core modules never import UIKit, SwiftUI, or AppKit, so they can be used on
@@ -109,6 +109,7 @@ Development guides are written in Korean.
 - [API 설계 규칙](docs/architecture/api-design.md) — public API naming, access control, compatibility
 - [성능 기준](docs/architecture/performance.md) — value semantics, allocation, measurement
 - [UI 모듈 가이드](docs/architecture/ui-modules.md) — rules for the UIKit and SwiftUI targets
+- [바텀시트](docs/components/bottom-sheet.md) — `BottomSheetController` usage, scroll tracking, verification
 - [Swift 스타일](docs/development/swiftstyle.md) — formatting and naming
 - [테스트](docs/development/testing.md) — test targets and commands
 - [Git 작업 흐름](docs/development/gitflow.md) — branches, commits, pull requests

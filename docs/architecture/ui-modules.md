@@ -1,6 +1,6 @@
 # swift-extension UI 모듈 가이드
 
-> UIKit·SwiftUI 재사용 뷰 타깃의 설계 규칙이에요. 두 타깃은 만들어 뒀고 아직 공개 선언이 없어요. 컴포넌트를 추가할 때 이 규칙을 따라요.
+> UIKit·SwiftUI 재사용 뷰 타깃의 설계 규칙이에요. 컴포넌트를 추가할 때 이 규칙을 따라요. 컴포넌트마다 `docs/components/`에 사용법과 검증 방법을 적어요.
 
 ## 목차
 
@@ -24,6 +24,13 @@
 - 같은 컴포넌트를 두 프레임워크로 제공할 때는 표시 로직을 각 타깃에 각각 두고, 계산·상태 규칙처럼 UI와 무관한 부분만 코어 모듈로 내려요.
 - 최소 배포 타깃은 패키지 전체 설정(iOS 15, macOS 12, tvOS 15, watchOS 8)을 그대로 따라요. 더 높은 버전이 필요한 API에는 `platforms`를 올리지 말고 선언별로 `@available`을 붙여요.
 
+지금 있는 컴포넌트예요.
+
+| 타깃 | 컴포넌트 | 문서 |
+| --- | --- | --- |
+| `UIKitExtension` | `BottomSheetController` — 탭바 뒤에서 올라오는 바텀시트 | [바텀시트](../components/bottom-sheet.md) |
+| `SwiftUIExtension` | 아직 없어요 | — |
+
 ## 의존성 규칙
 
 - UI 타깃은 `Algorithm`, `SwiftExtension` 같은 코어 모듈에 의존할 수 있어요.
@@ -43,7 +50,8 @@ import UIKit
 #endif
 ```
 
-- watchOS에는 `UIKit`의 상당 부분이 없어요. `#if canImport(UIKit) && !os(watchOS)`처럼 필요한 조건을 함께 적어요.
+- watchOS에는 `UIKit`의 상당 부분이 없어요. `#if canImport(UIKit) && !os(watchOS)`처럼 필요한 조건을 함께 적어요. 터치 제스처에 의존하는 컴포넌트는 `!os(tvOS)`도 붙여요.
+- UIKit에 의존하지 않는 계산(위치, 단계, 물리)은 별도 파일로 떼어 `import Foundation`만 쓰게 해요. 그 파일은 macOS `swift test`와 CI에서 검증돼요. 바텀시트의 `BottomSheetLayout`이 이 방식이에요.
 - macOS에서만 다른 동작이 필요하면 `#if os(macOS)`로 분기하고, 두 경로의 동작 차이를 문서 주석에 적어요.
 - 특정 OS 버전 이상에서만 쓸 수 있는 API에는 `@available(iOS 16, *)`처럼 최소 버전을 적어요. 타깃 전체 배포 버전을 올리지 않아요.
 
@@ -88,7 +96,8 @@ public struct BadgeStyle {
 
 ## 확인하는 방법
 
-- 두 UI 타깃도 `swift build`와 `swift test`로 컴파일을 확인해요. 시뮬레이터가 필요한 검증은 `Demo/`의 데모 앱에서 해요.
+- macOS의 `swift build`·`swift test`는 `#if canImport(UIKit)` 안쪽 코드를 **컴파일하지 않아요.** UIKit 코드를 바꿨으면 시뮬레이터 빌드와 테스트를 꼭 돌려요. 명령은 [테스트](../development/testing.md)에 있어요.
+- 제스처 손맛처럼 테스트로 잡기 어려운 동작은 시뮬레이터에서 눈으로 확인하고, 확인한 기기와 OS 버전을 PR에 적어요.
 - 표시 결과는 스크린샷이나 프리뷰로 확인하고, 확인한 플랫폼과 OS 버전을 PR에 적어요.
 - CI의 `Build`·`Test` 워크플로는 macOS 러너에서 `swift build`와 `swift test`를 돌려요. macOS에는 UIKit이 없어서 `#if canImport(UIKit)`로 감싼 코드는 **CI에서도 컴파일되지 않아요.**
 - `확인 필요`: iOS 시뮬레이터 빌드를 CI에 추가할지 여부. UIKit 컴포넌트가 들어가는 시점에 정해요. `xcodebuild -scheme UIKitExtension -destination 'platform=iOS Simulator,...'` 형태가 필요해요.

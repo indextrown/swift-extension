@@ -31,7 +31,7 @@
 | `Algorithm` | `Algorithm` | `Sources/Algorithm/` | 자료구조와 알고리즘 구현을 담아요. 지금은 `Stack`이 있어요. |
 | `Labs` | `Labs` | `Sources/Labs/` | 아직 공개 API로 확정하지 않은 실험 구현과 Playground를 담아요. |
 | `SwiftExtension` | `SwiftExtension` | `Sources/SwiftExtension/` | 패키지 수준 정보(`SwiftExtension.version`)를 담는 진입 모듈이에요. |
-| `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰와 확장을 담아요. 아직 공개 선언이 없어요. |
+| `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰와 확장을 담아요. 지금은 [바텀시트](../components/bottom-sheet.md)가 있어요. |
 | `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰와 `ViewModifier`를 담아요. 아직 공개 선언이 없어요. |
 | — | `AlgorithmTests` | `Tests/AlgorithmTests/` | `Algorithm` 테스트 |
 | — | `LabsTests` | `Tests/LabsTests/` | `Labs` 테스트 |
@@ -111,5 +111,6 @@ UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃�
 - [API 설계 규칙](api-design.md): 공개 API 이름, 접근 제어, 동시성, 호환성
 - [성능 기준](performance.md): 값 의미론, 할당, 측정 방법
 - [UI 모듈 가이드](ui-modules.md): UIKit·SwiftUI 타깃 설계 규칙
+- [바텀시트](../components/bottom-sheet.md): `UIKitExtension`의 첫 컴포넌트
 - [Swift 스타일](../development/swiftstyle.md): 코드 작성 규칙
 - [테스트](../development/testing.md): 테스트 타깃과 실행 명령

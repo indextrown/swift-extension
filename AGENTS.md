@@ -10,7 +10,8 @@
 | 타깃 구성과 모듈 경계 | [패키지 구조](docs/architecture/architecture.md) | 문서의 타깃 표를 `Package.swift`와 비교해요. 다르면 실제 설정을 따라요. |
 | 공개 API 설계 | [API 설계 규칙](docs/architecture/api-design.md) | `public`을 추가하거나 기존 시그니처를 바꾸기 전에 확인해요. |
 | 성능 변경과 측정 | [성능 기준](docs/architecture/performance.md) | 성능을 주장하기 전에 Release 구성에서 측정해요. |
-| UIKit·SwiftUI 타깃 | [UI 모듈 가이드](docs/architecture/ui-modules.md) | 타깃은 아직 없어요. 추가할 때 이 문서의 규칙과 절차를 따라요. |
+| UIKit·SwiftUI 타깃 | [UI 모듈 가이드](docs/architecture/ui-modules.md) | 컴포넌트를 추가하거나 고칠 때 이 문서의 규칙을 따라요. |
+| 바텀시트 컴포넌트 | [바텀시트](docs/components/bottom-sheet.md) | `BottomSheetController`를 쓰거나 고치기 전에 단계·offset 개념과 검증 방법을 확인해요. |
 | Swift 코드 작성 규칙 | [Swift 스타일](docs/development/swiftstyle.md) | 주변 코드와 다르면 주변 코드를 먼저 확인해요. |
 | 테스트 타깃과 실행 명령 | [테스트](docs/development/testing.md) | 문서에 적힌 명령으로 실행하고 결과를 기록해요. |
 | 브랜치·커밋·PR 규칙 | [Git 작업 흐름](docs/development/gitflow.md) | 저장소에서 확인한 규칙을 따라요. |
@@ -40,6 +41,7 @@
 - [ ] 추가·변경한 공개 API에 문서 주석과 복잡도를 적었어요.
 - [ ] 빈 상태와 경계값을 포함한 테스트를 추가했어요.
 - [ ] 성능이나 Unsafe 코드를 바꿨다면 측정 결과나 Sanitizer 결과를 기록했어요.
+- [ ] UIKit·SwiftUI 코드를 바꿨다면 iOS 시뮬레이터에서 `xcodebuild test`를 돌렸어요. macOS `swift test`는 그 코드를 컴파일하지 않아요.
 - [ ] 타깃 구성이나 실행 방법을 바꿨다면 관련 문서와 `README.md`도 갱신했어요.
 - [ ] 확인하지 못한 내용에는 `확인 필요`와 확인 대상을 남겼어요.
 - [ ] 커밋 메시지와 PR 본문에 AI 공동 작성자·생성 문구·세션 링크가 없는지 확인했어요.
