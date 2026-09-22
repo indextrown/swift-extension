@@ -202,7 +202,6 @@ func hiddenDetentIgnoresShortenedHost() {
     #expect(top == fixture.window.bounds.maxY)
     #expect(top > fixture.host.view.bounds.maxY)
 }
-#endif
 
 @Test("static에서는 콘텐츠 안전 영역 바닥이 부모 안전 영역 바닥에 맞춰져요") @MainActor
 func staticContentSafeAreaEndsAtHostSafeBottom() {
@@ -228,3 +227,4 @@ func staticContentSafeAreaEndsAtHostSafeBottom() {
 
     #expect(fixture.content.additionalSafeAreaInsets.bottom == 0)
 }
+#endif
