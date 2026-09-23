@@ -210,6 +210,8 @@ PR을 올리면 `Build`와 `Test` 워크플로가 자동으로 돌아요. 결과
 
 #### PR 본문은 저장소 템플릿을 따라요
 
+본문에 **무엇을 어떤 순서로 적는지**(커밋별 소절, 문제 → 원인 → 해결 → 검증, 기존 방식과 새 API 비교, 영상 표, 쌓인 PR의 base)는 [PR 작성 가이드](pr-writing.md)에 있어요. 여기서는 템플릿과 문체 규칙만 확인해요.
+
 다음 경로에서 PR 템플릿을 찾아요.
 
 ```text
@@ -248,6 +250,14 @@ git switch main
 git pull --ff-only origin main
 git branch -d feature/ring-buffer
 git push origin --delete feature/ring-buffer
+```
+
+#### 쌓인 PR은 아래부터 병합해요
+
+다른 기능 브랜치를 base로 둔 PR(stacked PR)은 **아래 PR을 먼저 `main`에 병합하고, 위 PR의 base를 `main`으로 바꾼 뒤** 병합해요. 아래 PR을 `main`에 병합한 다음 위 PR을 옛 base에 병합하면, 위 PR의 커밋은 `main`에 들어가지 않아요. 본문에 base를 적는 방법은 [PR 작성 가이드](pr-writing.md#쌓인-pr은-base를-본문에-적어요)에 있어요.
+
+```bash
+gh pr edit <번호> --base main
 ```
 
 ## 커밋·PR 전 체크리스트
