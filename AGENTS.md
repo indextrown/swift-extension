@@ -15,6 +15,7 @@
 | Swift 코드 작성 규칙 | [Swift 스타일](docs/development/swiftstyle.md) | 주변 코드와 다르면 주변 코드를 먼저 확인해요. |
 | 테스트 타깃과 실행 명령 | [테스트](docs/development/testing.md) | 문서에 적힌 명령으로 실행하고 결과를 기록해요. |
 | 브랜치·커밋·PR 규칙 | [Git 작업 흐름](docs/development/gitflow.md) | 저장소에서 확인한 규칙을 따라요. |
+| PR 제목·본문 작성 | [PR 작성 가이드](docs/development/pr-writing.md) | 무엇을 왜 바꿨는지, 문제 → 원인 → 해결 → 검증, 기존 방식과 새 API 비교, 영상 표를 이 문서의 구조로 적어요. |
 | 한국어 문서·PR 윤문 | [한국어 윤문 원칙](docs/development/korean-editing.md) | 원문의 의미·사실·말투·보호 구간을 유지하며 기계적인 표현만 수정해요. |
 | 커밋·PR의 AI 작성 표기 | [AI 작성 표기 규칙](docs/development/ai-attribution.md) | AI 공동 작성자 트레일러와 생성 문구·세션 링크를 넣지 않아요. |
 

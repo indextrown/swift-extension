@@ -115,6 +115,7 @@ Development guides are written in Korean.
 - [Swift 스타일](docs/development/swiftstyle.md) — formatting and naming
 - [테스트](docs/development/testing.md) — test targets and commands
 - [Git 작업 흐름](docs/development/gitflow.md) — branches, commits, pull requests
+- [PR 작성 가이드](docs/development/pr-writing.md) — what to write in a PR title and body, evidence, videos, stacked PRs
 
 ## License
 
