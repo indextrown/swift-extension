@@ -45,6 +45,10 @@ extension View {
     ///     넣기만 하면 그 값에 묶인 View가 시트와 같은 프레임에 움직여요. 애니메이션 블록으로 감싸지
     ///     않아도 되고, `Map`처럼 UIKit이 그리는 View의 안전 영역에 묶어도 튀지 않습니다.
     ///   - content: 시트 안에 표시할 내용입니다.
+    ///
+    /// 이 View 안에서는 환경값 `bottomSheetCoveredHeight`로 시트가 가린 높이를 읽을 수 있고,
+    /// `bottomSheetInset()`과 `bottomSheetDock(alignment:content:)`가 그 값을 써서 지도 여백과 떠 있는
+    /// 버튼을 시트에 맞춰 줘요.
     public func bottomSheet<Content: View>(
         detent: Binding<BottomSheetDetent.Identifier>,
         layout: BottomSheetLayout = .standard,
@@ -54,17 +58,61 @@ extension View {
         onOffsetChange: ((CGFloat) -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        return self.overlay {
-            BottomSheetOverlay(
-                detent: detent,
-                layout: layout,
-                allowedDetents: allowedDetents,
-                style: style,
-                behavior: behavior,
-                onOffsetChange: onOffsetChange,
-                content: content()
-            )
-        }
+        return BottomSheetHost(
+            base: self,
+            detent: detent,
+            layout: layout,
+            allowedDetents: allowedDetents,
+            style: style,
+            behavior: behavior,
+            onOffsetChange: onOffsetChange,
+            content: content()
+        )
+    }
+}
+
+
+
+// MARK: - Host
+
+/// 기본 View 위에 시트를 얹고, 시트가 가린 높이를 기본 View의 환경으로 내려 주는 View입니다.
+///
+/// 시트의 위치 상태는 `BottomSheetOverlay`가 갖고, 이 View는 그중 "가린 높이" 하나만 받아
+/// `bottomSheetCoveredHeight` 환경값으로 기본 View에 넣어요. 그래서 기본 View 안의 `bottomSheetInset()`과
+/// `bottomSheetDock`가 시트 상태에 접근하지 않고도 시트를 따라갈 수 있습니다.
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
+struct BottomSheetHost<Base: View, Content: View>: View {
+
+    let base: Base
+
+    @Binding var detent: BottomSheetDetent.Identifier
+
+    let layout: BottomSheetLayout
+    let allowedDetents: Set<BottomSheetDetent.Identifier>?
+    let style: BottomSheetStyle
+    let behavior: BottomSheetBehavior
+    let onOffsetChange: ((CGFloat) -> Void)?
+    let content: Content
+
+    /// 시트가 가린 높이입니다. 오버레이가 프레임마다 채워 줘요.
+    @State private var coveredHeight: CGFloat = 0
+
+    var body: some View {
+        self.base
+            .environment(\.bottomSheetCoveredHeight, self.coveredHeight)
+            .environment(\.bottomSheetDetent, self.detent)
+            .overlay {
+                BottomSheetOverlay(
+                    detent: self.$detent,
+                    layout: self.layout,
+                    allowedDetents: self.allowedDetents,
+                    style: self.style,
+                    behavior: self.behavior,
+                    onOffsetChange: self.onOffsetChange,
+                    onCoveredHeightChange: { self.coveredHeight = $0 },
+                    content: self.content
+                )
+            }
     }
 }
 
@@ -88,6 +136,10 @@ struct BottomSheetOverlay<Content: View>: View {
     let style: BottomSheetStyle
     let behavior: BottomSheetBehavior
     let onOffsetChange: ((CGFloat) -> Void)?
+
+    /// 시트가 가린 높이를 `BottomSheetHost`에 알립니다. 환경값 `bottomSheetCoveredHeight`의 원천이에요.
+    let onCoveredHeightChange: (CGFloat) -> Void
+
     let content: Content
 
     /// 부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리입니다. 이 값 하나로 위치를 정합니다.
@@ -187,6 +239,7 @@ struct BottomSheetOverlay<Content: View>: View {
             guard let newValue else { return }
 
             self.onOffsetChange?(newValue)
+            self.onCoveredHeightChange(max(self.metrics.available - newValue, 0))
         }
         .onPreferenceChange(BottomSheetContentHeightKey.self) { newValue in
             self.measuredContentHeight = newValue

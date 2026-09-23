@@ -58,19 +58,15 @@ struct SwiftUIBottomSheetDemoScreen: View {
     private var mapTab: some View {
         GeometryReader { proxy in
             let available = proxy.size.height
-            let coveredBySheet = self.coveredHeight(available: available)
 
             ZStack(alignment: .topLeading) {
                 Map(position: self.$cameraPosition) {
                     UserAnnotation()
                 }
-                /// 시트가 가린 만큼 안전 영역을 줄이면 MapKit이 보이는 영역 가운데로 카메라를 다시 잡습니다.
-                /// `onOffsetChange`가 매 프레임 준 offset에 묶여 있어 끄는 동안도, 손을 뗀 뒤 스프링으로 움직이는
-                /// 동안도 시트와 같은 프레임에 따라갑니다. 애니메이션을 따로 걸지 않아요. UIKit 판의
-                /// `didChangeCoveredHeight`와 같은 역할이에요.
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    Color.clear.frame(height: coveredBySheet)
-                }
+                /// 시트가 가린 만큼 아래 안전 영역을 줄여요. MapKit이 보이는 영역 가운데로 카메라를 다시 잡고,
+                /// 끄는 동안도 스프링으로 움직이는 동안도 매 프레임 따라가요. 이전에는 `onOffsetChange`로 받은
+                /// offset을 `@State`에 넣고 `safeAreaInset(edge: .bottom)` 높이를 직접 계산했어요.
+                .bottomSheetInset()
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(self.status)
@@ -93,21 +89,29 @@ struct SwiftUIBottomSheetDemoScreen: View {
                 }
                 .padding(16)
             }
-            /// 시트 위에 떠서 함께 움직이는 버튼입니다. `onOffsetChange`가 준 값에 묶여 있어 끄는 동안도, 도착할 때도 따라갑니다.
-            .overlay(alignment: .bottomTrailing) {
+            /// 시트 위에 떠서 함께 움직이는 도크예요. 환경값 `bottomSheetCoveredHeight`를 읽어 시트를 따라가고,
+            /// 시트가 `hidden`이면 탭바 위에 머물러요. 이전에는 `overlay(alignment: .bottomTrailing)`에
+            /// `padding(.bottom, coveredBySheet + 12)`를 직접 계산해 넣었어요.
+            .bottomSheetDock {
+                /// 시트가 내려가 있을 때만 보이는 열기 버튼이에요. 누르면 시트가 올라가면서 버튼이 사라져요.
+                Button {
+                    self.detent = .tip
+                } label: {
+                    Image(systemName: "chevron.up")
+                }
+                .buttonStyle(.bottomSheetDock)
+                .bottomSheetDockVisibility(.whenHidden)
+                .accessibilityLabel("시트 열기")
+
                 Button {
                     self.viewModel.locate()
                     self.centerOnUser(available: available)
                 } label: {
-                    Label("Locate", systemImage: "location.fill")
+                    Image(systemName: "location.fill")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color(.systemBackground))
-                .foregroundStyle(.blue)
-                .clipShape(Capsule())
+                .buttonStyle(.bottomSheetDock)
+                .accessibilityLabel("현재 위치")
                 .accessibilityIdentifier("locate")
-                .padding(.trailing, 16)
-                .padding(.bottom, coveredBySheet + 12)
             }
         }
         .bottomSheet(
@@ -129,14 +133,6 @@ struct SwiftUIBottomSheetDemoScreen: View {
                 }
             }
         }
-    }
-
-    /// 시트가 가리고 있는 높이입니다. `onOffsetChange`가 아직 안 왔으면 단계 위치로 계산합니다.
-    private func coveredHeight(available: CGFloat) -> CGFloat {
-        let detentValue = Self.layout.detent(for: self.detent) ?? Self.layout.detents[0]
-        let detentOffset = Self.layout.offset(for: detentValue, availableHeight: available)
-
-        return max(available - (self.sheetOffset ?? detentOffset), 0)
     }
 
     private func centerOnUser(available: CGFloat) {

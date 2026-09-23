@@ -68,6 +68,23 @@ func resolvedContentDetentIsClamped() {
     #expect(negative.detents[0].anchor == .height(8))
 }
 
+@Test("도크 표시 규칙은 머무는 단계 이름으로 판단해요")
+func dockVisibilityRules() {
+    #expect(BottomSheetDockVisibility.always.isVisible(at: .hidden))
+    #expect(BottomSheetDockVisibility.always.isVisible(at: .full))
+
+    #expect(BottomSheetDockVisibility.whenHidden.isVisible(at: .hidden))
+    #expect(BottomSheetDockVisibility.whenHidden.isVisible(at: .tip) == false)
+
+    #expect(BottomSheetDockVisibility.unlessHidden.isVisible(at: .hidden) == false)
+    #expect(BottomSheetDockVisibility.unlessHidden.isVisible(at: .tip))
+
+    #expect(BottomSheetDockVisibility.only([.tip, .half]).isVisible(at: .half))
+    #expect(BottomSheetDockVisibility.only([.tip, .half]).isVisible(at: .full) == false)
+    #expect(BottomSheetDockVisibility.except([.full]).isVisible(at: .full) == false)
+    #expect(BottomSheetDockVisibility.except([.full]).isVisible(at: "custom"))
+}
+
 // MARK: - Layout lookup
 
 @Test func standardLayoutResolvesEachDetent() {
