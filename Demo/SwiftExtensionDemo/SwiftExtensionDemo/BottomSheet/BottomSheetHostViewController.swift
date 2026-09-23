@@ -34,8 +34,32 @@ final class BottomSheetHostViewController: UIViewController {
 
     private let detentButtons = UIStackView()
 
-    /// 시트 위에 떠서 함께 올라가는 버튼입니다. 형제 View를 `sheet.view.topAnchor`에 붙여 따라가게 합니다.
-    private let locateButton = UIButton(type: .system)
+    /// 시트 위에 떠서 함께 움직이는 버튼 묶음(도크)이에요. `sheet.attachDock(_:)`가 `uncoveredLayoutGuide`에 붙여 줘요.
+    ///
+    /// 이전에는 버튼 하나를 `sheet.view.topAnchor`에 직접 제약으로 붙였어요. 도크 API로 바꾸면서 제약 코드가
+    /// 사라지고, 시트가 `hidden`이면 탭바 위에 머무는 것도 저절로 됩니다.
+    private lazy var dock: BottomSheetDockView = {
+        let dock = BottomSheetDockView(arrangedSubviews: [self.openButton, self.locateButton])
+        /// 열기 버튼은 시트가 내려가 있을 때만 보여요. 누르면 시트가 올라가면서 버튼이 사라져요.
+        dock.setVisibility(.whenHidden, for: self.openButton)
+        return dock
+    }()
+
+    /// 시트를 `tip`으로 올려요. `hidden`에서만 보이는 버튼이에요.
+    private lazy var openButton = BottomSheetDockView.makeButton(
+        systemImage: "chevron.up",
+        accessibilityLabel: "시트 열기",
+        action: UIAction { [weak self] _ in self?.sheet.move(to: .tip, animated: true) }
+    )
+
+    private lazy var locateButton = BottomSheetDockView.makeButton(
+        systemImage: "location.fill",
+        accessibilityLabel: "현재 위치",
+        action: UIAction { [weak self] _ in
+            self?.viewModel.locate()
+            self?.centerOnUser(animated: true)
+        }
+    )
 
     /// 목록을 위로 끌 때 시트가 먼저 올라갈지 정합니다. 데모 툴바의 토글이 바꿔 줍니다.
     var scrollingExpandsSheet: Bool {
@@ -64,11 +88,9 @@ final class BottomSheetHostViewController: UIViewController {
         self.sheet.add(to: self)
         self.sheet.track(scrollView: self.listViewController.tableView)
 
-        /// 시트가 붙은 뒤에 걸어야 `sheet.view`가 부모 안에 있습니다.
-        self.locateButton.bottomAnchor.constraint(
-            equalTo: self.sheet.view.topAnchor,
-            constant: -12
-        ).isActive = true
+        /// 시트가 붙은 뒤에 불러요. 도크는 시트 아래 층에 들어가고 시트 윗선을 따라가요.
+        self.locateButton.accessibilityIdentifier = "locate"
+        self.sheet.attachDock(self.dock)
 
         self.bindViewModel()
         self.viewModel.start()
@@ -120,26 +142,10 @@ final class BottomSheetHostViewController: UIViewController {
             }, for: .touchUpInside)
             self.detentButtons.addArrangedSubview(button)
         }
-
-        self.locateButton.accessibilityIdentifier = "locate"
-        self.locateButton.configuration = {
-            var configuration = UIButton.Configuration.filled()
-            configuration.title = "Locate"
-            configuration.image = UIImage(systemName: "location.fill")
-            configuration.imagePadding = 6
-            configuration.baseBackgroundColor = .systemBackground
-            configuration.baseForegroundColor = .systemBlue
-            configuration.cornerStyle = .capsule
-            return configuration
-        }()
-        self.locateButton.addAction(UIAction { [weak self] _ in
-            self?.viewModel.locate()
-            self?.centerOnUser(animated: true)
-        }, for: .touchUpInside)
     }
 
     private func setConstraint() {
-        [self.mapView, self.statusLabel, self.detentButtons, self.locateButton].forEach {
+        [self.mapView, self.statusLabel, self.detentButtons].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             self.view.addSubview($0)
         }
@@ -156,12 +162,10 @@ final class BottomSheetHostViewController: UIViewController {
             self.statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: self.view.trailingAnchor, constant: -16),
 
             self.detentButtons.topAnchor.constraint(equalTo: self.statusLabel.bottomAnchor, constant: 8),
-            self.detentButtons.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 16),
-
-            self.locateButton.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -16),
-            self.locateButton.heightAnchor.constraint(equalToConstant: 44)
+            self.detentButtons.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 16)
         ])
     }
+
 
 
 

@@ -9,6 +9,7 @@
 - [기본 사용법](#기본-사용법)
 - [단계와 offset](#단계와-offset)
 - [탭바 뒤에서 올라오는 원리](#탭바-뒤에서-올라오는-원리)
+- [시트 위에 떠 있는 컨트롤 (도크)](#시트-위에-떠-있는-컨트롤-도크)
 - [스크롤뷰 따라가기](#스크롤뷰-따라가기)
 - [콘텐츠 높이만큼 올라오는 .content 단계](#콘텐츠-높이만큼-올라오는-content-단계)
 - [모양과 움직임 바꾸기](#모양과-움직임-바꾸기)
@@ -31,7 +32,7 @@ UIKit의 `UISheetPresentationController`는 `present`로 띄워요. 창 전체�
 | 붙는 방식 | `present` (모달) | `add(to:)` (자식 뷰컨트롤러) |
 | 탭바 | 가려요 | 뒤에 놓여요. 탭바는 그대로 눌려요 |
 | 단계 | `.medium()`, `.large()`, iOS 16부터 `.custom` | 값으로 정한 단계 목록. 이름을 새로 만들 수 있어요 |
-| 형제 View 배치 | 시트 위치에 다른 View를 붙일 수 없어요 | `sheet.view.topAnchor`에 지도 버튼 같은 형제를 붙일 수 있어요 |
+| 형제 View 배치 | 시트 위치에 다른 View를 붙일 수 없어요 | `uncoveredLayoutGuide`·`attachDock(_:)`으로 지도 버튼 같은 형제를 시트 윗선에 붙여 함께 움직이게 할 수 있어요 |
 | 스크롤 연동 | 자동 | `track(scrollView:)`로 지정 |
 | 최소 버전 | iOS 15 | iOS 15 |
 
@@ -45,13 +46,17 @@ UIKit의 `UISheetPresentationController`는 `present`로 띄워요. 창 전체�
 | `UIComponentsCore` | `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden`, `content` 프리셋 |
 | `UIComponentsCore` | `BottomSheetLayout.swift` | 단계 목록. 가장 가까운 단계, 위·아래 단계, 저항, 속도 투영, 뒷판 진행률 |
 | `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계, 스크롤이 시트를 올릴지 |
+| `UIComponentsCore` | `BottomSheetDockAlignment.swift` | 도크를 붙일 쪽(`leading`, `trailing`) |
+| `UIComponentsCore` | `BottomSheetDockVisibility.swift` | 도크 항목이 보일 단계 규칙(`always`, `whenHidden`, `only`, `except`) |
 | `UIKitExtension` | `BottomSheetAppearance.swift` | 배경색, 모서리, 손잡이, 그림자, 뒷판 (UIKit 타입) |
 | `UIKitExtension` | `BottomSheetSurfaceView.swift` | 시트 겉면과 손잡이 View. 그림자 경로, VoiceOver 조작 |
 | `UIKitExtension` | `BottomSheetControllerDelegate.swift` | 끌기 시작·이동·도착 단계 결정·단계 변경 콜백 |
-| `UIKitExtension` | `BottomSheetController.swift` | 자식으로 붙이기, 제스처, 스크롤 따라가기, 애니메이션 |
+| `UIKitExtension` | `BottomSheetController.swift` | 자식으로 붙이기, 제스처, 스크롤 따라가기, 애니메이션, `uncoveredLayoutGuide`·`attachDock(_:)` |
+| `UIKitExtension` | `BottomSheetDockView.swift` | 시트 위에 세로로 쌓이는 둥근 버튼 묶음, 44pt 원형 버튼 만들기, 항목별 표시 규칙 |
 | `SwiftUIExtension` | `BottomSheetStyle.swift` | 배경, 모서리, 손잡이, 그림자, 뒷판 (SwiftUI 타입) |
 | `SwiftUIExtension` | `BottomSheetScrollView.swift` | 스크롤 위치를 시트에 알리는 `ScrollView` 포장 |
-| `SwiftUIExtension` | `BottomSheetModifier.swift` | `View.bottomSheet(detent:)` 수정자와 시트를 그리는 overlay |
+| `SwiftUIExtension` | `BottomSheetModifier.swift` | `View.bottomSheet(detent:)` 수정자와 시트를 그리는 overlay. 가린 높이를 환경값으로 내려 줘요 |
+| `SwiftUIExtension` | `BottomSheetDock.swift` | 환경값 `bottomSheetCoveredHeight`·`bottomSheetDetent`, `bottomSheetInset()`, `bottomSheetDock(alignment:content:)`, `bottomSheetDockVisibility(_:)`, `.bottomSheetDock` 버튼 스타일 |
 
 `UIComponentsCore`는 `import Foundation`만 써서 macOS `swift test`와 CI에서 검증돼요. 위치 계산의 회귀는 PR 단계에서 잡혀요. 두 UI 타깃은 이 모듈을 `@_exported import`로 다시 내보내므로 `import UIKitExtension` 또는 `import SwiftUIExtension` 하나로 `BottomSheetLayout` 같은 타입을 써요.
 
@@ -78,11 +83,8 @@ final class MapViewController: UIViewController {
         self.sheet.add(to: self)
         self.sheet.track(scrollView: self.listViewController.tableView)
 
-        // 시트 위에 떠서 함께 올라가는 버튼
-        self.locateButton.bottomAnchor.constraint(
-            equalTo: self.sheet.view.topAnchor,
-            constant: -12
-        ).isActive = true
+        // 시트 위에 떠서 함께 올라가는 버튼 묶음
+        self.sheet.attachDock(BottomSheetDockView(arrangedSubviews: [self.locateButton]))
     }
 }
 ```
@@ -166,6 +168,99 @@ sheet.view.bottom == host.bottom            ← 안전 영역이 아니라 View 
 - `availableHeight`는 부모 안전 영역의 높이라서 탭바 높이가 이미 빠져 있어요. `tip`의 96pt는 탭바 **위에서** 보이는 높이예요.
 - 시트 View의 `safeAreaInsets.bottom`에 탭바 높이가 그대로 전달돼요. 콘텐츠 화면이 `safeAreaLayoutGuide`를 쓰면 탭바에 가리는 부분이 저절로 빠져요.
 - `hidden` 단계는 안전 영역 바닥이 아니라 **창 바닥**까지 내려요. 안전 영역 끝에 세우면 탭바가 없는 화면에서 손잡이가 홈 인디케이터 옆에 남고, 부모 View 바닥에 세우면 불투명 탭바가 부모 View를 탭바 위까지로 줄인 경우 iOS 26 탭바의 반투명한 위 가장자리로 시트가 비쳐 보여요. 데모에서 실제로 그렇게 보여 창 바닥으로 바꿨어요.
+
+## 시트 위에 떠 있는 컨트롤 (도크)
+
+지도 앱의 현재 위치 버튼처럼 **시트 윗선에 붙어 함께 오르내리는 컨트롤**을 도크라고 불러요. 시트는 지도 여백·버튼·스케일 바가 자기 위치를 따라가게 할 수 있어야 하는데, 처음에는 화면마다 손으로 붙였어요.
+
+| | 이전 (PR #7 데모) | 도크 API |
+| --- | --- | --- |
+| UIKit 버튼 | `locateButton.bottomAnchor == sheet.view.topAnchor - 12` 제약을 직접 걸고, trailing·크기 제약도 따로 | `sheet.attachDock(BottomSheetDockView(arrangedSubviews: [stepButton, locateButton]))` |
+| UIKit 지도 여백 | 델리게이트 `didChangeCoveredHeight`에서 `setCenter` | 같아요. 카메라는 레이아웃이 아니라서 델리게이트가 맞아요 |
+| SwiftUI 버튼 | `onOffsetChange` → `@State` → `overlay(alignment: .bottomTrailing)` + `padding(.bottom, covered + 12)` 계산 | `.bottomSheetDock { locateButton }` |
+| SwiftUI 지도 여백 | 같은 `@State`로 `safeAreaInset(edge: .bottom) { Color.clear.frame(height: covered) }` | `Map(...).bottomSheetInset()` |
+| `hidden`일 때 | 시트 윗선이 화면 밖이라 버튼이 탭바 뒤로 따라 내려가요 | 탭바 위에 멈춰요 |
+
+### UIKit
+
+```swift
+// 이전
+self.locateButton.bottomAnchor.constraint(equalTo: self.sheet.view.topAnchor, constant: -12).isActive = true
+self.locateButton.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -16).isActive = true
+
+// 도크 API
+let dock = BottomSheetDockView(arrangedSubviews: [
+    BottomSheetDockView.makeButton(systemImage: "chevron.up", accessibilityLabel: "시트 올리기", action: stepUp),
+    BottomSheetDockView.makeButton(systemImage: "location.fill", accessibilityLabel: "현재 위치", action: locate)
+])
+self.sheet.add(to: self)
+self.sheet.attachDock(dock)                      // 기본: trailing, 아래 12pt · 옆 16pt
+```
+
+- `uncoveredLayoutGuide`는 부모 안전 영역 위쪽 끝부터 **시트 윗선**까지의 `UILayoutGuide`예요. 어떤 View든 `bottomAnchor`를 여기 붙이면 시트를 따라가요. `attachDock(_:)`은 이 가이드에 붙이는 편의 메서드예요.
+- 아래쪽 끝은 시트 윗선과 안전 영역 아래쪽 끝 중 **더 위에 있는 것**이에요. Auto Layout에 min()은 없어서 필수 상한 두 개(`<= 시트 윗선`, `<= 안전 영역 바닥`)와 999 우선순위의 등식(`== 시트 윗선`)으로 만들었어요. 시트가 `hidden`으로 화면 밖에 있으면 등식이 최소한으로만 깨져 가이드가 탭바 윗선에 멈춰요.
+- 도크는 부모 View에 시트보다 **아래 층**으로 들어가요. 한계 너머로 끌어 겹칠 때 시트가 위에 보여요.
+- 제약 하나로 연결되므로 끌 때도 스프링으로 움직일 때도 같은 배치 패스에서 따라가요. 델리게이트가 필요 없어요.
+
+### SwiftUI
+
+```swift
+// 이전
+@State private var sheetOffset: CGFloat?
+Map(...)
+    .safeAreaInset(edge: .bottom) { Color.clear.frame(height: covered) }
+    .overlay(alignment: .bottomTrailing) {
+        LocateButton().padding(.bottom, covered + 12).padding(.trailing, 16)
+    }
+    .bottomSheet(detent: $detent, onOffsetChange: { sheetOffset = $0 }) { ... }
+
+// 도크 API
+Map(...)
+    .bottomSheetInset()
+    .bottomSheetDock {
+        Button { stepUp() } label: { Image(systemName: "chevron.up") }.buttonStyle(.bottomSheetDock)
+        Button { locate() } label: { Image(systemName: "location.fill") }.buttonStyle(.bottomSheetDock)
+    }
+    .bottomSheet(detent: $detent) { ... }
+```
+
+- `bottomSheet(detent:)`가 기본 View에 환경값 `bottomSheetCoveredHeight`(시트가 가린 높이)를 내려 줘요. 끄는 동안과 스프링 중에 매 프레임 바뀌어요.
+- `bottomSheetInset()`은 그 값만큼 아래 안전 영역을 줄여요. `Map`은 카메라를 가운데로 다시 잡고, `List`는 마지막 줄이 가리지 않아요.
+- `bottomSheetDock`은 `alignment` 쪽 아래 모서리에 `content`를 세로로 쌓고 가린 높이만큼 띄워요. `bottomSheetInset()`을 함께 쓰면 그 **바깥**(뒤)에 붙여요. 안쪽에 붙이면 줄어든 안전 영역 위에 다시 띄워 두 배로 올라가요.
+- `.buttonStyle(.bottomSheetDock)`은 44pt 원형 버튼이에요. UIKit `BottomSheetDockView.makeButton`과 같은 생김새예요.
+- 직접 다른 배치를 하고 싶으면 `@Environment(\.bottomSheetCoveredHeight)`를 읽어요.
+
+### 단계에 따라 나타나고 사라지는 항목
+
+"시트가 내려가 있을 때만 보이는 올리기 버튼"처럼 항목마다 어느 단계에서 보일지 정할 수 있어요. 규칙은 `BottomSheetDockVisibility`(코어)로, 판단은 시트가 **머무는 단계** 기준이에요. 손을 뗀 순간 도착 단계가 정해지면 시트가 움직이는 동안 항목이 페이드로 함께 나타나고 사라져요.
+
+| 규칙 | 뜻 |
+| --- | --- |
+| `.always` | 항상 보여요 (기본값) |
+| `.whenHidden` | 시트가 `hidden`일 때만. 시트를 다시 올리는 버튼에 써요 |
+| `.unlessHidden` | `hidden`이 아닐 때만 |
+| `.only([.tip, .half])` / `.except([.full])` | 지정한 단계에서만 보이거나 숨어요 |
+
+```swift
+// UIKit — 누르면 시트가 올라가면서 버튼이 사라져요
+let openButton = BottomSheetDockView.makeButton(systemImage: "chevron.up", accessibilityLabel: "시트 열기",
+                                                action: UIAction { _ in sheet.move(to: .tip, animated: true) })
+let dock = BottomSheetDockView(arrangedSubviews: [openButton, locateButton])
+dock.setVisibility(.whenHidden, for: openButton)
+sheet.attachDock(dock)
+
+// SwiftUI
+.bottomSheetDock {
+    Button { detent = .tip } label: { Image(systemName: "chevron.up") }
+        .buttonStyle(.bottomSheetDock)
+        .bottomSheetDockVisibility(.whenHidden)
+    Button { locate() } label: { Image(systemName: "location.fill") }
+        .buttonStyle(.bottomSheetDock)
+}
+```
+
+- UIKit은 `attachDock(_:)`에 넘긴 `BottomSheetDockView`를 컨트롤러가 기억해 두고, 단계가 바뀔 때 `update(for:animated:)`를 불러요. `isHidden`으로 빼서 스택 간격도 함께 사라지고 알파로 페이드돼요. 붙는 순간 지금 단계에 맞춰요.
+- SwiftUI는 `bottomSheet(detent:)`가 환경값 `bottomSheetDetent`(머무는 단계)를 내려 주고, `bottomSheetDockVisibility(_:)`가 그 값으로 항목을 `if`로 넣고 빼요. 크기·투명도 전환이 붙어 있어요. 시트 밖에서는 항상 보여요.
 
 ## 스크롤뷰 따라가기
 
@@ -305,6 +400,7 @@ struct MapScreen: View {
 - `onOffsetChange`는 시트가 움직이는 **매 프레임** 와요. 끄는 동안은 손가락 위치가, 손을 뗀 뒤나 `detent`를 바꿔 옮기는 동안은 스프링이 지나는 중간 위치가 그대로 와요. 받은 값을 `@State`에 넣고 버튼 위치나 지도 여백을 거기 묶으면 애니메이션 블록 없이도 시트와 같은 프레임에 움직여요. UIKit의 `didMoveTo`(끄는 동안) + `didChangeCoveredHeight`(도착)를 하나로 합친 셈인데, 도착값을 한 번만 주는 대신 중간값을 프레임마다 줘요.
   - 이렇게 한 이유: 도착값만 애니메이션 블록 안에서 넘기면 순수 SwiftUI View는 나란히 움직이지만, `Map`처럼 UIKit이 그리는 View는 안전 영역의 중간값을 보간하지 못해 손을 뗀 순간 엉뚱한 위치로 튀고 애니메이션이 끝날 때 다시 튀어요(데모에서 화면 녹화로 확인). 내부에서는 `Animatable` 모디파이어가 애니메이션 중간값을 `PreferenceKey`로 올려 보내요.
 - 손잡이는 VoiceOver `adjustable` 요소이고, 동작 줄이기가 켜져 있으면 스프링 대신 완만한 곡선을 써요.
+- 시트를 따라가는 지도 여백과 버튼은 `bottomSheetInset()`·`bottomSheetDock`으로 붙여요. [도크](#시트-위에-떠-있는-컨트롤-도크) 절에 있어요.
 
 UIKit 판과 다른 점이에요.
 

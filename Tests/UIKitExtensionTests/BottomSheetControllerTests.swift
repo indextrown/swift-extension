@@ -341,6 +341,96 @@ func contentDetentUsesTrackedScrollViewContentSize() {
     #expect(fixture.sheet.currentOffset == fixture.availableHeight - (fixture.sheet.appearance.handleAreaHeight + 140))
 }
 
+@Test("uncoveredLayoutGuide는 안전 영역 위쪽 끝부터 시트 윗선까지이고 시트를 옮기면 따라가요") @MainActor
+func uncoveredLayoutGuideFollowsSheetTop() {
+    let fixture = SheetFixture(initialDetent: .half)
+    let guide = fixture.sheet.uncoveredLayoutGuide
+    let safe = fixture.host.view.safeAreaLayoutGuide.layoutFrame
+
+    #expect(guide.owningView === fixture.host.view)
+    #expect(guide.layoutFrame.minY == safe.minY)
+    #expect(guide.layoutFrame.minX == safe.minX)
+    #expect(guide.layoutFrame.maxX == safe.maxX)
+    #expect(guide.layoutFrame.maxY == fixture.sheet.view.frame.minY)
+
+    fixture.sheet.move(to: .tip, animated: false)
+
+    #expect(guide.layoutFrame.maxY == fixture.sheet.view.frame.minY)
+}
+
+@Test("시트가 hidden으로 안전 영역 아래에 있으면 uncoveredLayoutGuide는 안전 영역 아래쪽 끝에서 멈춰요") @MainActor
+func uncoveredLayoutGuideStopsAtSafeAreaBottomWhenHidden() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .hidden)
+    let safe = fixture.host.view.safeAreaLayoutGuide.layoutFrame
+
+    #expect(fixture.sheet.view.frame.minY >= safe.maxY)
+    #expect(fixture.sheet.uncoveredLayoutGuide.layoutFrame.maxY == safe.maxY)
+}
+
+@Test("attachDock은 도크를 시트 아래 층에 넣고 가리지 않은 영역의 아래 모서리에 붙여요") @MainActor
+func attachDockPinsViewAboveSheet() {
+    let fixture = SheetFixture(initialDetent: .half)
+    let host = fixture.host.view!
+    let button = BottomSheetDockView.makeButton(systemImage: "location.fill", accessibilityLabel: "현재 위치", action: UIAction { _ in })
+    let dock = BottomSheetDockView(arrangedSubviews: [button])
+
+    let constraints = fixture.sheet.attachDock(dock)
+    host.layoutIfNeeded()
+
+    #expect(constraints.count == 2)
+    #expect(dock.superview === host)
+    #expect(host.subviews.firstIndex(of: dock)! < host.subviews.firstIndex(of: fixture.sheet.view)!)
+    #expect(dock.frame.maxY == fixture.sheet.view.frame.minY - 12)
+    #expect(dock.frame.maxX == host.safeAreaLayoutGuide.layoutFrame.maxX - 16)
+    #expect(dock.frame.height == BottomSheetDockView.buttonSize)
+
+    /// 시트가 움직이면 같은 배치 패스에서 따라가요.
+    fixture.sheet.move(to: .tip, animated: false)
+    #expect(dock.frame.maxY == fixture.sheet.view.frame.minY - 12)
+
+    /// 왼쪽 정렬과 다른 여백도 돼요.
+    let leadingDock = UIView()
+    leadingDock.heightAnchor.constraint(equalToConstant: 30).isActive = true
+    leadingDock.widthAnchor.constraint(equalToConstant: 30).isActive = true
+    fixture.sheet.attachDock(leadingDock, alignment: .leading, insets: UIEdgeInsets(top: 0, left: 8, bottom: 4, right: 0))
+    host.layoutIfNeeded()
+    #expect(leadingDock.frame.minX == host.safeAreaLayoutGuide.layoutFrame.minX + 8)
+    #expect(leadingDock.frame.maxY == fixture.sheet.view.frame.minY - 4)
+}
+
+@Test("도크 항목은 표시 규칙에 따라 단계가 바뀔 때 나타나고 사라져요") @MainActor
+func dockItemsFollowVisibilityRules() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .half)
+    let open = BottomSheetDockView.makeButton(systemImage: "chevron.up", accessibilityLabel: "시트 열기", action: UIAction { _ in })
+    let locate = BottomSheetDockView.makeButton(systemImage: "location.fill", accessibilityLabel: "현재 위치", action: UIAction { _ in })
+    let dock = BottomSheetDockView(arrangedSubviews: [open, locate])
+    dock.setVisibility(.whenHidden, for: open)
+
+    fixture.sheet.attachDock(dock)
+
+    /// 붙는 순간 지금 단계(half)에 맞춰요.
+    #expect(open.isHidden)
+    #expect(locate.isHidden == false)
+    #expect(dock.visibility(for: open) == .whenHidden)
+    #expect(dock.visibility(for: locate) == .always)
+
+    fixture.sheet.move(to: .hidden, animated: false)
+    #expect(open.isHidden == false)
+    #expect(locate.isHidden == false)
+
+    fixture.sheet.move(to: .tip, animated: false)
+    #expect(open.isHidden)
+}
+
+@Test("attachDock은 붙기 전이면 아무 일도 하지 않아요") @MainActor
+func attachDockBeforeAddIsNoOp() {
+    let sheet = BottomSheetController(contentViewController: UIViewController())
+    let dock = UIView()
+
+    #expect(sheet.attachDock(dock).isEmpty)
+    #expect(dock.superview == nil)
+}
+
 @Test("스크롤이 시트를 올리지 않는 모드에서는 어느 단계에서든 스크롤이 자유로워요") @MainActor
 func trackedScrollIsFreeWhenScrollingDoesNotExpandSheet() {
     let fixture = SheetFixture(

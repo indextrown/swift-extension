@@ -13,7 +13,7 @@ SwiftExtensionDemo/
 │   └── UIKitContainer.swift             UIViewControllerContainer / UIViewContainer 범용 포장
 └── BottomSheet/
     ├── BottomSheetDemoView.swift        UITabBarController를 컨테이너로 감싼 화면. 불투명·유리 탭바 토글
-    ├── BottomSheetHostViewController    MKMapView 위에 시트를 붙이는 UIKit 화면. Locate 버튼은 sheet.view.topAnchor에 묶임
+    ├── BottomSheetHostViewController    MKMapView 위에 시트를 붙이는 UIKit 화면. 도크(sheet.attachDock)가 시트를 따라감
     ├── MapHostViewModel                 UIKit 화면의 ViewModel. 위치 권한·현재 위치를 클로저로 알림
     ├── PlaceListViewController          시트 안 콘텐츠 (UITableView 40행)
     ├── SwiftUIBottomSheetDemoScreen     SwiftUI 버전. Map 위 TabView 탭 콘텐츠에 bottomSheet(detent:) 적용
@@ -85,7 +85,9 @@ cp Demo/SwiftExtensionDemo/Config/Local.xcconfig.example Demo/SwiftExtensionDemo
 
 배경은 MapKit 지도예요. 화면이 열리면 위치 권한을 묻고 현재 위치로 지도를 옮겨요. `Locate` 버튼을 누르면 다시 현재 위치로 가요. 위치는 UIKit 쪽 `MapHostViewModel`(클로저), SwiftUI 쪽 `MapDemoViewModel`(`@Observable`)이 각각 독립적으로 다뤄요.
 
-시트를 올리고 내리면 지도도 따라가요. 보이는 영역의 가운데에 있던 지점이 계속 가운데에 남도록 시트가 더 가린 높이의 절반만큼 중심을 밀어요. UIKit 판은 델리게이트 `didChangeCoveredHeight(_:animated:)`에서 `setCenter`로, SwiftUI 판은 `onOffsetChange`가 매 프레임 준 offset을 `Map`의 `safeAreaInset`에 묶어 MapKit이 알아서 해요.
+시트를 올리고 내리면 지도도 따라가요. 보이는 영역의 가운데에 있던 지점이 계속 가운데에 남도록 시트가 더 가린 높이의 절반만큼 중심을 밀어요. UIKit 판은 델리게이트 `didChangeCoveredHeight(_:animated:)`에서 `setCenter`로, SwiftUI 판은 `Map`에 `.bottomSheetInset()`을 붙여 MapKit이 알아서 해요.
+
+오른쪽 아래 `⌖`(현재 위치) 버튼은 **도크**예요. UIKit은 `sheet.attachDock(BottomSheetDockView(...))`, SwiftUI는 `.bottomSheetDock { ... }`로 붙였고, 시트 윗선을 따라 오르내리며 `hidden`이면 탭바 위에 머물러요. `hidden`으로 내리면 도크에 `∧`(시트 열기)이 나타나요. `.whenHidden` 표시 규칙이라 시트가 내려가 있을 때만 보이고, 누르면 시트가 `tip`으로 올라가면서 사라져요.
 
 시뮬레이터에서는 위치가 비어 있을 수 있어요. 아래처럼 위치를 넣어 두면 돼요.
 
