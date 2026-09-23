@@ -252,6 +252,14 @@ git branch -d feature/ring-buffer
 git push origin --delete feature/ring-buffer
 ```
 
+#### 쌓인 PR은 아래부터 병합해요
+
+다른 기능 브랜치를 base로 둔 PR(stacked PR)은 **아래 PR을 먼저 `main`에 병합하고, 위 PR의 base를 `main`으로 바꾼 뒤** 병합해요. 아래 PR을 `main`에 병합한 다음 위 PR을 옛 base에 병합하면, 위 PR의 커밋은 `main`에 들어가지 않아요. 본문에 base를 적는 방법은 [PR 작성 가이드](pr-writing.md#쌓인-pr은-base를-본문에-적어요)에 있어요.
+
+```bash
+gh pr edit <번호> --base main
+```
+
 ## 커밋·PR 전 체크리스트
 
 - [ ] 현재 브랜치와 대상 기본 브랜치가 작업에 맞아요.
