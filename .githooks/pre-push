@@ -49,7 +49,11 @@ command -v jq >/dev/null 2>&1 || fail "jq를 찾을 수 없어요."
 # 원격 이름 없이 URL로 push하면 $1이 URL이라 origin의 기본 브랜치를 기준으로 삼아요.
 git remote | grep -qx -- "$remote" || remote=origin
 default_branch=$(git symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null)
-default_branch="${default_branch:-$remote/main}"
+if [ -z "$default_branch" ]; then
+  # 로컬에 <remote>/HEAD가 없으면 원격에 기본 브랜치를 물어보고, 그래도 모르면 main으로 가정해요.
+  head_branch=$(git ls-remote --symref "$remote" HEAD 2>/dev/null | awk '/^ref:/ { sub("refs/heads/", "", $2); print $2; exit }')
+  default_branch="$remote/${head_branch:-main}"
+fi
 
 # git이 stdin으로 push할 ref를 한 줄씩 넘겨줘요: <local ref> <local sha> <remote ref> <remote sha>
 while read -r local_ref local_sha remote_ref remote_sha; do
@@ -65,7 +69,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_sha" != "$zero" ] && git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
     base="$remote_sha"
   else
-    base=$(git merge-base "$default_branch" "$local_sha" 2>/dev/null) || fail "$default_branch 와의 공통 조상을 찾지 못했어요."
+    base=$(git merge-base "$default_branch" "$local_sha" 2>/dev/null) || fail "$default_branch 와의 공통 조상을 찾지 못했어요. git fetch $remote 후 다시 push해 보세요."
   fi
 
   if git diff --quiet "$base" "$local_sha"; then
