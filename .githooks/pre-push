@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#
+# pre-push: 브랜치를 push하기 전에 Claude Code의 /code-review를 돌려요.
+# Claude가 PASS/FAIL을 판정하고, FAIL이면 push를 중단해요.
+#
+# 설치: git config core.hooksPath .githooks
+# 우회: git push --no-verify
+# 설정: CLAUDE_REVIEW_LEVEL(기본 medium) — /code-review에 넘길 단계예요.
+#
+set -uo pipefail
+
+remote="$1"
+level="${CLAUDE_REVIEW_LEVEL:-medium}"
+zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')
+log_file="$(git rev-parse --absolute-git-dir)/claude-review-last.json"
+
+schema='{
+  "type": "object",
+  "properties": {
+    "verdict": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "summary": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": { "type": "string", "enum": ["blocking", "non-blocking"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "summary": { "type": "string" }
+        },
+        "required": ["severity", "file", "summary"]
+      }
+    }
+  },
+  "required": ["verdict", "summary", "findings"]
+}'
+
+fail() {
+  echo "" >&2
+  echo "✖ push를 중단했어요: $1" >&2
+  echo "  리뷰 없이 push하려면 git push --no-verify 를 쓰세요." >&2
+  exit 1
+}
+
+if ! command -v claude >/dev/null 2>&1; then
+  fail "claude CLI를 찾을 수 없어요."
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  fail "jq를 찾을 수 없어요."
+fi
+
+default_branch=$(git symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null)
+default_branch="${default_branch:-$remote/main}"
+
+# git이 stdin으로 push할 ref를 한 줄씩 넘겨줘요: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # 브랜치 삭제와 태그 push는 리뷰하지 않아요.
+  [ "$local_sha" = "$zero" ] && continue
+  case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac
+
+  branch="${remote_ref#refs/heads/}"
+  # 기본 브랜치는 Ruleset이 직접 push를 막으므로 리뷰하지 않아요.
+  [ "$branch" = "${default_branch#"$remote"/}" ] && continue
+
+  # 후속 push는 새로 올라가는 커밋만, 첫 push나 강제 push는 기본 브랜치에서 갈라진 뒤 전체를 리뷰해요.
+  if [ "$remote_sha" != "$zero" ] && git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null; then
+    base="$remote_sha"
+  else
+    base=$(git merge-base "$default_branch" "$local_sha" 2>/dev/null) || fail "$default_branch 와의 공통 조상을 찾지 못했어요."
+  fi
+
+  if git diff --quiet "$base" "$local_sha"; then
+    continue
+  fi
+
+  range="$base..$local_sha"
+  echo "▶ $branch: /code-review $level 를 실행해요 (${base:0:7}..${local_sha:0:7})" >&2
+  git --no-pager diff --stat "$base" "$local_sha" >&2
+  echo "" >&2
+
+  # 프롬프트를 /code-review로 시작하면 -p 모드에서 스킬이 백그라운드로 fork되고 결과를 기다리지 않아요.
+  # 그래서 Skill 도구로 code-review 스킬을 실행하고, 그 결과로 판정하게 해요.
+  prompt="Skill 도구로 code-review 스킬을 args \"$level $range\" 로 실행하고, 리뷰가 끝날 때까지 기다려 결과를 받으세요.
+리뷰 대상은 커밋 범위 $range 예요(git diff $range, git log $range). 파일은 수정하지 마세요.
+리뷰를 마친 뒤 정확성 버그·크래시·데이터 손실·보안 문제처럼 머지 전에 반드시 고쳐야 할 문제가 하나라도 확인되면 verdict를 FAIL로, 없으면 PASS로 판정하세요. 정리·스타일 제안은 non-blocking으로 적고 FAIL 사유로 삼지 마세요. summary와 findings는 한국어 해요체로 적으세요."
+
+  output=$(claude -p "$prompt" \
+    --output-format json \
+    --json-schema "$schema" \
+    --permission-mode dontAsk \
+    --allowedTools "Read" "Grep" "Glob" "Skill" "Agent" "ReportFindings" \
+      "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" \
+      "Bash(git merge-base:*)" "Bash(git rev-parse:*)" "Bash(git blame:*)" \
+      "Bash(git ls-files:*)" "Bash(git branch:*)" \
+    --disallowedTools "Edit" "Write" "NotebookEdit" \
+    </dev/null)
+  status=$?
+  printf '%s\n' "$output" >"$log_file"
+
+  [ $status -eq 0 ] || fail "claude가 종료 코드 $status 로 끝났어요. 원본 출력: $log_file"
+
+  verdict=$(jq -r '.structured_output.verdict // empty' <<<"$output" 2>/dev/null)
+  if [ -z "$verdict" ]; then
+    jq -r '.result // empty' <<<"$output" >&2 2>/dev/null
+    fail "리뷰 결과에서 PASS/FAIL 판정을 읽지 못했어요. 원본 출력: $log_file"
+  fi
+
+  echo "── 리뷰 요약 ──" >&2
+  jq -r '.structured_output.summary' <<<"$output" >&2
+  jq -r '.structured_output.findings[]
+    | "  [\(.severity)] \(.file)\(if .line then ":\(.line)" else "" end) — \(.summary)"' <<<"$output" >&2
+  echo "" >&2
+
+  if [ "$verdict" != "PASS" ]; then
+    fail "$branch 에서 차단할 문제가 발견됐어요 (FAIL)."
+  fi
+  echo "✔ $branch: PASS" >&2
+done
+
+exit 0

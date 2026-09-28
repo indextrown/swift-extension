@@ -33,6 +33,7 @@
 | 실험 중인 구현을 추가해요. | `Sources/Labs/`에서 시작하고, 정식 모듈로 옮기는 기준은 [패키지 구조](docs/architecture/architecture.md)를 따라요. |
 | 문서와 코드가 달라요. | 실제 코드와 `Package.swift`를 기준으로 작업하고 관련 문서도 같은 작업에서 고쳐요. |
 | 확인하지 못한 내용이 있어요. | 단정하지 말고 `확인 필요`라고 표시해요. 확인할 파일이나 명령도 함께 적어요. |
+| 브랜치를 push해요. | `.githooks/pre-push`가 Claude 코드 리뷰를 돌려요. `FAIL`이면 지적된 문제를 고치고 다시 push해요. `--no-verify`는 사용자가 요청할 때만 써요. 설치와 동작은 [Git 작업 흐름](docs/development/gitflow.md#push-전에-claude-코드-리뷰가-돌아요)을 따라요. |
 | 커밋 제목을 적어요. | `유형: 변경 내용` 형식의 개조식으로 적어요. 예: `feat: RingBuffer 추가` |
 | PR 제목과 본문을 적어요. | `[유형] 변경 내용` 형식에 해요체로 적어요. 예: `[feature] RingBuffer를 추가했어요` |
 | 커밋 메시지나 PR 본문을 작성해요. | `Co-Authored-By: Claude` 같은 AI 공동 작성자 트레일러, `Generated with Claude Code` 같은 생성 문구와 AI 세션 링크를 넣지 않아요. 실제 사람의 기여 기록은 유지해요. |
