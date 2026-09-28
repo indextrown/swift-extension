@@ -171,6 +171,7 @@ git config core.hooksPath .githooks
 | 시간 제한 | `claude` 호출 한 번에 최대 900초예요. `CLAUDE_REVIEW_TIMEOUT`으로 바꿀 수 있어요. |
 | 우회 | `git push --no-verify` |
 | 필요한 도구 | `claude` CLI와 `jq`. 없거나 리뷰 결과·판정을 받지 못하면 push를 막아요. |
+| 출력 | 리뷰 결과, 판정 이유, 요약(범위·커밋·파일·줄 수, 판정, 시간, 비용)을 보여 줘요. |
 | 마지막 원본 출력 | 리뷰는 `.git/claude-review-last.json`, 판정은 `.git/claude-review-verdict.json` |
 
 hook은 `claude -p`를 두 번 호출해요.

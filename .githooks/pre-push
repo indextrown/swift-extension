@@ -43,6 +43,29 @@ succeeded() {
   jq -e '.is_error == false and .subtype == "success"' <<<"$1" >/dev/null 2>&1
 }
 
+# 범위·판정·시간·비용을 한 블록으로 보여 줘요. 루프 안의 변수(base, local_sha, range, verdict, *_json)를 읽어요.
+print_summary() {
+  local commits shortstat files ins del
+  commits=$(git rev-list --count "$range")
+  shortstat=$(git diff --shortstat "$base" "$local_sha")
+  files=$(grep -oE '[0-9]+ files? changed' <<<"$shortstat" | cut -d' ' -f1)
+  ins=$(grep -oE '[0-9]+ insertions?' <<<"$shortstat" | cut -d' ' -f1)
+  del=$(grep -oE '[0-9]+ deletions?' <<<"$shortstat" | cut -d' ' -f1)
+
+  echo "" >&2
+  echo "── 요약 ──" >&2
+  printf '  범위    %s..%s (커밋 %s개, 파일 %s개, +%s −%s)\n' \
+    "${base:0:7}" "${local_sha:0:7}" "$commits" "${files:-0}" "${ins:-0}" "${del:-0}" >&2
+  printf '  판정    %s\n' "$verdict" >&2
+  printf '  시간    리뷰 %s초 · 판정 %s초\n' \
+    "$(jq -r '(.duration_ms // 0) / 1000 | round' <<<"$review_json")" \
+    "$(jq -r '(.duration_ms // 0) / 1000 | round' <<<"$verdict_json")" >&2
+  printf '  비용    리뷰 $%.2f · 판정 $%.2f\n' \
+    "$(jq -r '.total_cost_usd // 0' <<<"$review_json")" \
+    "$(jq -r '.total_cost_usd // 0' <<<"$verdict_json")" >&2
+  echo "" >&2
+}
+
 command -v claude >/dev/null 2>&1 || fail "claude CLI를 찾을 수 없어요."
 command -v jq >/dev/null 2>&1 || fail "jq를 찾을 수 없어요."
 
@@ -135,6 +158,7 @@ $review
 
   echo "── 판정: $verdict ──" >&2
   jq -r '.structured_output.reason' <<<"$verdict_json" >&2
+  print_summary
 
   [ "$verdict" = "PASS" ] || fail "$branch 에서 차단할 문제가 발견됐어요 (FAIL)."
   echo "✔ $branch: PASS" >&2
