@@ -154,6 +154,35 @@ git push -u origin feature/ring-buffer
 
 push가 완료되면 원격 저장소에 작업 브랜치가 생겨요. 첫 push 후에는 `-u`를 사용해 로컬과 원격 브랜치를 연결해요.
 
+#### push 전에 Claude 코드 리뷰가 돌아요
+
+`.githooks/pre-push`가 브랜치를 push할 때마다 Claude Code의 `code-review` 스킬을 실행해요. PR을 열기 직전에 리뷰하려고 커밋이 아니라 push 시점에 걸었어요. git hook이라 어느 터미널에서 push해도 동작해요. clone한 뒤 한 번만 설치해요.
+
+```bash
+git config core.hooksPath .githooks
+```
+
+| 항목 | 동작 |
+| --- | --- |
+| 리뷰 범위 | 첫 push와 강제 push는 기본 브랜치에서 갈라진 뒤의 전체 변경, 후속 push는 새로 올라가는 커밋만 리뷰해요. |
+| 판정 | 두 번째 Claude가 리뷰 결과만 보고 `PASS`/`FAIL`을 내요. 정확성 버그·크래시·데이터 손실·보안 문제가 있으면 `FAIL`이고 push를 중단해요. 정리·스타일 제안은 막지 않아요. |
+| 건너뛰는 경우 | 브랜치 삭제, 태그 push, 기본 브랜치(`main`) push, 변경이 없는 push |
+| 리뷰 단계 | 기본은 `medium`이에요. `CLAUDE_REVIEW_LEVEL=high git push`처럼 바꿀 수 있어요. |
+| 시간 제한 | `claude` 호출 한 번에 최대 900초예요. `CLAUDE_REVIEW_TIMEOUT`으로 바꿀 수 있어요. |
+| 우회 | `git push --no-verify` |
+| 필요한 도구 | `claude` CLI와 `jq`. 없거나 리뷰 결과·판정을 받지 못하면 push를 막아요. |
+| 출력 | 리뷰 결과, 판정 이유, 요약(범위·커밋·파일·줄 수, 판정, 시간, 비용)을 보여 줘요. |
+| 마지막 원본 출력 | 리뷰는 `.git/claude-review-last.json`, 판정은 `.git/claude-review-verdict.json` |
+
+hook은 `claude -p`를 두 번 호출해요.
+
+1. **리뷰:** `code-review` 스킬을 Skill 도구로 실행하고 결과 텍스트를 받아요. 파일을 수정하지 않도록 읽기와 `git` 조회 명령만 허용해요.
+2. **판정:** 도구 없이 리뷰 텍스트만 보고 `--json-schema`로 `PASS`/`FAIL`을 받아요.
+
+한 번에 하지 않는 이유가 있어요. 프롬프트를 `/code-review`로 시작하면 `-p` 모드에서 스킬이 백그라운드로 fork되고 결과를 기다리지 않아요. Skill 도구로 실행해도 `ReportFindings`나 `--json-schema`가 있으면 fork된 스킬이 그 도구로 보고하고 끝나서 호출한 쪽에 결과 텍스트가 오지 않아요.
+
+한 번 push에 수십 초에서 몇 분이 걸리고 API 비용이 들어요. 후속 push에서 `main`을 merge한 커밋을 올리면 `main`에서 들어온 변경도 리뷰 범위에 들어가요.
+
 ### 7. PR을 만들고 리뷰를 요청해요
 
 #### GitHub CLI 사용을 먼저 검토해요
@@ -268,6 +297,7 @@ gh pr edit <번호> --base main
 - [ ] 커밋 제목은 `유형: 내용` 개조식, PR 제목과 본문은 해요체로 적었어요.
 - [ ] [AI 작성 표기 규칙](ai-attribution.md)에 따라 커밋 메시지와 PR 본문의 AI 공동 작성자·생성 문구·세션 링크를 제외했어요.
 - [ ] `swift test`를 실행했거나 실행하지 못한 이유를 기록했어요.
+- [ ] push 전 Claude 코드 리뷰가 `PASS`였어요. `--no-verify`로 우회했다면 이유를 PR에 적었어요.
 - [ ] PR의 `Build`·`Test` 워크플로가 통과했어요.
 - [ ] 공개 API를 바꿨다면 호환성 영향과 복잡도를 PR에 적었어요.
 - [ ] PR 템플릿을 확인하고 변경 이유, 영향 범위와 검증 결과를 적었어요.
