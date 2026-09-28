@@ -60,9 +60,12 @@ print_summary() {
   printf '  시간    리뷰 %s초 · 판정 %s초\n' \
     "$(jq -r '(.duration_ms // 0) / 1000 | round' <<<"$review_json")" \
     "$(jq -r '(.duration_ms // 0) / 1000 | round' <<<"$verdict_json")" >&2
-  printf '  비용    리뷰 $%.2f · 판정 $%.2f\n' \
-    "$(jq -r '.total_cost_usd // 0' <<<"$review_json")" \
-    "$(jq -r '.total_cost_usd // 0' <<<"$verdict_json")" >&2
+  # printf의 %.2f는 소수점을 쉼표로 쓰는 로케일에서 실패해서 금액은 jq에서 문자열로 만들어요.
+  local dollars='((.total_cost_usd // 0) * 100 | round) as $c
+    | "\($c / 100 | floor).\($c % 100 | tostring | if length < 2 then "0" + . else . end)"'
+  printf '  비용    리뷰 $%s · 판정 $%s\n' \
+    "$(jq -r "$dollars" <<<"$review_json")" \
+    "$(jq -r "$dollars" <<<"$verdict_json")" >&2
   echo "" >&2
 }
 
@@ -109,11 +112,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   #   그래서 Skill 도구로 실행하게 해요.
   # - ReportFindings와 --json-schema가 있으면 fork된 스킬이 그 도구로 보고하고 끝나서 결과 텍스트가 비어요.
   #   그래서 이 단계에서는 둘 다 쓰지 않아요.
-  review_prompt="Skill 도구로 code-review 스킬을 args \"$level $range\" 로 실행하세요. 직접 리뷰하지 말고 파일도 수정하지 마세요. 스킬이 돌려준 결과 텍스트를 바꾸지 말고 그대로 출력하세요."
+  review_prompt="Skill 도구로 code-review 스킬을 args \"$level $range\" 로 실행하세요. 직접 리뷰하지 말고 파일도 수정하지 마세요. 스킬이 돌려준 결과 텍스트를 바꾸지 말고 그대로 출력하세요. 커넥터 인증 상태처럼 리뷰와 관계없는 안내나 설명은 덧붙이지 마세요."
 
   review_json=$(with_timeout claude -p "$review_prompt" \
     --output-format json \
     --permission-mode dontAsk \
+    --strict-mcp-config \
     --allowedTools "Read" "Grep" "Glob" "Skill" "Agent" \
       "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" \
       "Bash(git merge-base:*)" "Bash(git rev-parse:*)" "Bash(git blame:*)" "Bash(git ls-files:*)" \
@@ -146,6 +150,7 @@ $review
     --json-schema "$schema" \
     --effort low \
     --permission-mode dontAsk \
+    --strict-mcp-config \
     --disallowedTools "Bash" "Edit" "Write" "NotebookEdit" "Skill" "Agent" "WebFetch" "WebSearch" \
     </dev/null)
   status=$?
