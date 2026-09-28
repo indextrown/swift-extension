@@ -1,39 +1,30 @@
 #!/usr/bin/env bash
 #
-# pre-push: 브랜치를 push하기 전에 Claude Code의 /code-review를 돌려요.
+# pre-push: 브랜치를 push하기 전에 Claude Code의 code-review 스킬을 돌려요.
 # Claude가 PASS/FAIL을 판정하고, FAIL이면 push를 중단해요.
 #
 # 설치: git config core.hooksPath .githooks
 # 우회: git push --no-verify
-# 설정: CLAUDE_REVIEW_LEVEL(기본 medium) — /code-review에 넘길 단계예요.
+# 설정: CLAUDE_REVIEW_LEVEL(기본 medium) — code-review에 넘길 단계예요.
+#       CLAUDE_REVIEW_TIMEOUT(기본 900) — claude 호출 한 번에 기다리는 최대 초예요.
 #
 set -uo pipefail
 
 remote="$1"
 level="${CLAUDE_REVIEW_LEVEL:-medium}"
+timeout="${CLAUDE_REVIEW_TIMEOUT:-900}"
 zero=$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')
-log_file="$(git rev-parse --absolute-git-dir)/claude-review-last.json"
+git_dir=$(git rev-parse --absolute-git-dir)
+review_log="$git_dir/claude-review-last.json"
+verdict_log="$git_dir/claude-review-verdict.json"
 
 schema='{
   "type": "object",
   "properties": {
     "verdict": { "type": "string", "enum": ["PASS", "FAIL"] },
-    "summary": { "type": "string" },
-    "findings": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "severity": { "type": "string", "enum": ["blocking", "non-blocking"] },
-          "file": { "type": "string" },
-          "line": { "type": "integer" },
-          "summary": { "type": "string" }
-        },
-        "required": ["severity", "file", "summary"]
-      }
-    }
+    "reason": { "type": "string" }
   },
-  "required": ["verdict", "summary", "findings"]
+  "required": ["verdict", "reason"]
 }'
 
 fail() {
@@ -43,13 +34,16 @@ fail() {
   exit 1
 }
 
-if ! command -v claude >/dev/null 2>&1; then
-  fail "claude CLI를 찾을 수 없어요."
-fi
-if ! command -v jq >/dev/null 2>&1; then
-  fail "jq를 찾을 수 없어요."
-fi
+# macOS에는 timeout 명령이 없어서 perl의 alarm으로 시간을 제한해요.
+with_timeout() {
+  perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$timeout" "$@"
+}
 
+command -v claude >/dev/null 2>&1 || fail "claude CLI를 찾을 수 없어요."
+command -v jq >/dev/null 2>&1 || fail "jq를 찾을 수 없어요."
+
+# 원격 이름 없이 URL로 push하면 $1이 URL이라 origin의 기본 브랜치를 기준으로 삼아요.
+git remote | grep -qx -- "$remote" || remote=origin
 default_branch=$(git symbolic-ref --short "refs/remotes/$remote/HEAD" 2>/dev/null)
 default_branch="${default_branch:-$remote/main}"
 
@@ -75,46 +69,62 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
 
   range="$base..$local_sha"
-  echo "▶ $branch: /code-review $level 를 실행해요 (${base:0:7}..${local_sha:0:7})" >&2
+  echo "▶ $branch: code-review $level 를 실행해요 (${base:0:7}..${local_sha:0:7})" >&2
   git --no-pager diff --stat "$base" "$local_sha" >&2
   echo "" >&2
 
-  # 프롬프트를 /code-review로 시작하면 -p 모드에서 스킬이 백그라운드로 fork되고 결과를 기다리지 않아요.
-  # 그래서 Skill 도구로 code-review 스킬을 실행하고, 그 결과로 판정하게 해요.
-  prompt="Skill 도구로 code-review 스킬을 args \"$level $range\" 로 실행하고, 리뷰가 끝날 때까지 기다려 결과를 받으세요.
-리뷰 대상은 커밋 범위 $range 예요(git diff $range, git log $range). 파일은 수정하지 마세요.
-리뷰를 마친 뒤 정확성 버그·크래시·데이터 손실·보안 문제처럼 머지 전에 반드시 고쳐야 할 문제가 하나라도 확인되면 verdict를 FAIL로, 없으면 PASS로 판정하세요. 정리·스타일 제안은 non-blocking으로 적고 FAIL 사유로 삼지 마세요. summary와 findings는 한국어 해요체로 적으세요."
+  # 1단계: code-review 스킬을 실행하고 결과 텍스트를 받아요.
+  # - 프롬프트를 /code-review로 시작하면 -p 모드에서 스킬이 백그라운드로 fork되고 결과를 기다리지 않아요.
+  #   그래서 Skill 도구로 실행하게 해요.
+  # - ReportFindings와 --json-schema가 있으면 fork된 스킬이 그 도구로 보고하고 끝나서 결과 텍스트가 비어요.
+  #   그래서 이 단계에서는 둘 다 쓰지 않아요.
+  review_prompt="Skill 도구로 code-review 스킬을 args \"$level $range\" 로 실행하세요. 직접 리뷰하지 말고 파일도 수정하지 마세요. 스킬이 돌려준 결과 텍스트를 바꾸지 말고 그대로 출력하세요."
 
-  output=$(claude -p "$prompt" \
+  review_json=$(with_timeout claude -p "$review_prompt" \
     --output-format json \
-    --json-schema "$schema" \
     --permission-mode dontAsk \
-    --allowedTools "Read" "Grep" "Glob" "Skill" "Agent" "ReportFindings" \
+    --allowedTools "Read" "Grep" "Glob" "Skill" "Agent" \
       "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" \
-      "Bash(git merge-base:*)" "Bash(git rev-parse:*)" "Bash(git blame:*)" \
-      "Bash(git ls-files:*)" "Bash(git branch:*)" \
-    --disallowedTools "Edit" "Write" "NotebookEdit" \
+      "Bash(git merge-base:*)" "Bash(git rev-parse:*)" "Bash(git blame:*)" "Bash(git ls-files:*)" \
+    --disallowedTools "Edit" "Write" "NotebookEdit" "ReportFindings" "Bash(* --output*)" \
     </dev/null)
   status=$?
-  printf '%s\n' "$output" >"$log_file"
+  printf '%s\n' "$review_json" >"$review_log"
+  [ $status -eq 0 ] || fail "리뷰 단계의 claude가 종료 코드 $status 로 끝났어요. 원본 출력: $review_log"
 
-  [ $status -eq 0 ] || fail "claude가 종료 코드 $status 로 끝났어요. 원본 출력: $log_file"
+  review=$(jq -r '.result // empty' <<<"$review_json" 2>/dev/null)
+  [ -n "$review" ] || fail "code-review 스킬의 결과를 받지 못했어요. 원본 출력: $review_log"
 
-  verdict=$(jq -r '.structured_output.verdict // empty' <<<"$output" 2>/dev/null)
-  if [ -z "$verdict" ]; then
-    jq -r '.result // empty' <<<"$output" >&2 2>/dev/null
-    fail "리뷰 결과에서 PASS/FAIL 판정을 읽지 못했어요. 원본 출력: $log_file"
-  fi
+  echo "── code-review 결과 ──" >&2
+  printf '%s\n\n' "$review" >&2
 
-  echo "── 리뷰 요약 ──" >&2
-  jq -r '.structured_output.summary' <<<"$output" >&2
-  jq -r '.structured_output.findings[]
-    | "  [\(.severity)] \(.file)\(if .line then ":\(.line)" else "" end) — \(.summary)"' <<<"$output" >&2
-  echo "" >&2
+  # 2단계: 도구 없이 리뷰 결과만 보고 PASS/FAIL을 판정해요.
+  judge_prompt="아래는 커밋 범위 $range 에 대한 code-review 결과예요. 코드를 다시 리뷰하지 말고 이 결과만 보고 판정하세요.
+정확성 버그·크래시·데이터 손실·보안 문제처럼 머지 전에 반드시 고쳐야 할 지적이 하나라도 있으면 FAIL, 없으면 PASS예요. 지적이 없거나 정리·스타일 제안만 있으면 PASS예요.
+reason은 한국어 해요체 한두 문장으로 적으세요.
 
-  if [ "$verdict" != "PASS" ]; then
-    fail "$branch 에서 차단할 문제가 발견됐어요 (FAIL)."
-  fi
+<review>
+$review
+</review>"
+
+  verdict_json=$(with_timeout claude -p "$judge_prompt" \
+    --output-format json \
+    --json-schema "$schema" \
+    --effort low \
+    --permission-mode dontAsk \
+    --disallowedTools "Bash" "Edit" "Write" "NotebookEdit" "Skill" "Agent" "WebFetch" "WebSearch" \
+    </dev/null)
+  status=$?
+  printf '%s\n' "$verdict_json" >"$verdict_log"
+  [ $status -eq 0 ] || fail "판정 단계의 claude가 종료 코드 $status 로 끝났어요. 원본 출력: $verdict_log"
+
+  verdict=$(jq -r '.structured_output.verdict // empty' <<<"$verdict_json" 2>/dev/null)
+  [ -n "$verdict" ] || fail "PASS/FAIL 판정을 읽지 못했어요. 원본 출력: $verdict_log"
+
+  echo "── 판정: $verdict ──" >&2
+  jq -r '.structured_output.reason' <<<"$verdict_json" >&2
+
+  [ "$verdict" = "PASS" ] || fail "$branch 에서 차단할 문제가 발견됐어요 (FAIL)."
   echo "✔ $branch: PASS" >&2
 done
 

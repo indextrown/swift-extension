@@ -165,14 +165,22 @@ git config core.hooksPath .githooks
 | 항목 | 동작 |
 | --- | --- |
 | 리뷰 범위 | 첫 push와 강제 push는 기본 브랜치에서 갈라진 뒤의 전체 변경, 후속 push는 새로 올라가는 커밋만 리뷰해요. |
-| 판정 | Claude가 `PASS`/`FAIL`을 내요. 정확성 버그·크래시·데이터 손실·보안 문제가 있으면 `FAIL`이고 push를 중단해요. 정리·스타일 제안은 막지 않아요. |
+| 판정 | 두 번째 Claude가 리뷰 결과만 보고 `PASS`/`FAIL`을 내요. 정확성 버그·크래시·데이터 손실·보안 문제가 있으면 `FAIL`이고 push를 중단해요. 정리·스타일 제안은 막지 않아요. |
 | 건너뛰는 경우 | 브랜치 삭제, 태그 push, 기본 브랜치(`main`) push, 변경이 없는 push |
 | 리뷰 단계 | 기본은 `medium`이에요. `CLAUDE_REVIEW_LEVEL=high git push`처럼 바꿀 수 있어요. |
+| 시간 제한 | `claude` 호출 한 번에 최대 900초예요. `CLAUDE_REVIEW_TIMEOUT`으로 바꿀 수 있어요. |
 | 우회 | `git push --no-verify` |
-| 필요한 도구 | `claude` CLI와 `jq`. 없거나 판정을 읽지 못하면 push를 막아요. |
-| 마지막 원본 출력 | `.git/claude-review-last.json` |
+| 필요한 도구 | `claude` CLI와 `jq`. 없거나 리뷰 결과·판정을 받지 못하면 push를 막아요. |
+| 마지막 원본 출력 | 리뷰는 `.git/claude-review-last.json`, 판정은 `.git/claude-review-verdict.json` |
 
-리뷰는 파일을 수정하지 않도록 읽기와 `git` 조회 명령만 허용해서 실행해요. 한 번 리뷰에 수십 초가 걸리고 API 비용이 들어요.
+hook은 `claude -p`를 두 번 호출해요.
+
+1. **리뷰:** `code-review` 스킬을 Skill 도구로 실행하고 결과 텍스트를 받아요. 파일을 수정하지 않도록 읽기와 `git` 조회 명령만 허용해요.
+2. **판정:** 도구 없이 리뷰 텍스트만 보고 `--json-schema`로 `PASS`/`FAIL`을 받아요.
+
+한 번에 하지 않는 이유가 있어요. 프롬프트를 `/code-review`로 시작하면 `-p` 모드에서 스킬이 백그라운드로 fork되고 결과를 기다리지 않아요. Skill 도구로 실행해도 `ReportFindings`나 `--json-schema`가 있으면 fork된 스킬이 그 도구로 보고하고 끝나서 호출한 쪽에 결과 텍스트가 오지 않아요.
+
+한 번 push에 수십 초에서 몇 분이 걸리고 API 비용이 들어요. 후속 push에서 `main`을 merge한 커밋을 올리면 `main`에서 들어온 변경도 리뷰 범위에 들어가요.
 
 ### 7. PR을 만들고 리뷰를 요청해요
 
