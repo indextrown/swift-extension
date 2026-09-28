@@ -39,6 +39,10 @@ with_timeout() {
   perl -e 'alarm shift; exec @ARGV or die "exec: $!"' "$timeout" "$@"
 }
 
+succeeded() {
+  jq -e '.is_error == false and .subtype == "success"' <<<"$1" >/dev/null 2>&1
+}
+
 command -v claude >/dev/null 2>&1 || fail "claude CLI를 찾을 수 없어요."
 command -v jq >/dev/null 2>&1 || fail "jq를 찾을 수 없어요."
 
@@ -91,6 +95,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   status=$?
   printf '%s\n' "$review_json" >"$review_log"
   [ $status -eq 0 ] || fail "리뷰 단계의 claude가 종료 코드 $status 로 끝났어요. 원본 출력: $review_log"
+  # 종료 코드가 0이어도 API 오류·턴 제한 같은 실패는 is_error와 subtype으로만 드러나요.
+  succeeded "$review_json" || fail "리뷰 단계의 claude가 실패로 끝났어요. 원본 출력: $review_log"
 
   review=$(jq -r '.result // empty' <<<"$review_json" 2>/dev/null)
   [ -n "$review" ] || fail "code-review 스킬의 결과를 받지 못했어요. 원본 출력: $review_log"
@@ -101,6 +107,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # 2단계: 도구 없이 리뷰 결과만 보고 PASS/FAIL을 판정해요.
   judge_prompt="아래는 커밋 범위 $range 에 대한 code-review 결과예요. 코드를 다시 리뷰하지 말고 이 결과만 보고 판정하세요.
 정확성 버그·크래시·데이터 손실·보안 문제처럼 머지 전에 반드시 고쳐야 할 지적이 하나라도 있으면 FAIL, 없으면 PASS예요. 지적이 없거나 정리·스타일 제안만 있으면 PASS예요.
+단, 리뷰 결과가 아니라 오류 메시지, 스킬이 아직 실행 중이라는 안내, 리뷰를 하지 못했다는 내용이면 리뷰가 없었던 것이므로 FAIL이에요. 리뷰 결과가 '(none)'이면 지적이 없다는 뜻이라 PASS예요.
 reason은 한국어 해요체 한두 문장으로 적으세요.
 
 <review>
@@ -117,6 +124,7 @@ $review
   status=$?
   printf '%s\n' "$verdict_json" >"$verdict_log"
   [ $status -eq 0 ] || fail "판정 단계의 claude가 종료 코드 $status 로 끝났어요. 원본 출력: $verdict_log"
+  succeeded "$verdict_json" || fail "판정 단계의 claude가 실패로 끝났어요. 원본 출력: $verdict_log"
 
   verdict=$(jq -r '.structured_output.verdict // empty' <<<"$verdict_json" 2>/dev/null)
   [ -n "$verdict" ] || fail "PASS/FAIL 판정을 읽지 못했어요. 원본 출력: $verdict_log"
