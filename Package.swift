@@ -35,6 +35,10 @@ let package = Package(
             name: "SwiftUIExtension",
             targets: ["SwiftUIExtension"]
         ),
+        .library(
+            name: "UIKitComponents",
+            targets: ["UIKitComponents"]
+        ),
     ],
     targets: [
         .target(name: "Algorithm"),
@@ -52,6 +56,7 @@ let package = Package(
             name: "SwiftUIExtension",
             dependencies: ["UIComponentsCore"]
         ),
+        .target(name: "UIKitComponents"),
         .testTarget(
             name: "AlgorithmTests",
             dependencies: ["Algorithm"]
@@ -75,6 +80,10 @@ let package = Package(
         .testTarget(
             name: "SwiftUIExtensionTests",
             dependencies: ["SwiftUIExtension"]
+        ),
+        .testTarget(
+            name: "UIKitComponentsTests",
+            dependencies: ["UIKitComponents"]
         ),
     ]
 )
