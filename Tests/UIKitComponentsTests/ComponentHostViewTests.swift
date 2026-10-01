@@ -66,6 +66,39 @@ import UIKit
 }
 
 @MainActor
+@Test func hostViewUpdatedOffWindowStartsWorkOnlyWhenBack() {
+    let cancellations = Counter()
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 240, height: 400))
+    window.makeKeyAndVisible()
+    let hostView = ComponentHostView(CancellationComponent(cancellations: cancellations))
+    window.addSubview(hostView)
+    hostView.removeFromSuperview()
+    #expect(cancellations.value == 1)
+
+    /// 화면 밖에서 갱신하면 뷰는 바뀌지만, 등록한 작업은 바로 정리돼요.
+    hostView.update(CancellationComponent(cancellations: cancellations))
+    #expect(hostView.updateCount == 2)
+    #expect(cancellations.value == 2)
+
+    /// 다시 붙으면 새 수명으로 갱신하고, 그 작업은 살아 있어요.
+    window.addSubview(hostView)
+    #expect(hostView.updateCount == 3)
+    #expect(cancellations.value == 2)
+}
+
+@MainActor
+@Test func hostViewCancelsWorkWhenReleasedWithoutWindow() {
+    let cancellations = Counter()
+
+    autoreleasepool {
+        let hostView = ComponentHostView(CancellationComponent(cancellations: cancellations))
+        #expect(hostView.updateCount == 1)
+    }
+
+    #expect(cancellations.value == 1)
+}
+
+@MainActor
 @Test("Auto Layout으로 붙이면 너비에 맞는 높이를 가져요", arguments: [longText, shortText, ""])
 func hostViewFitsContentHeightWithAutoLayout(text: String) {
     let container = UIView(frame: CGRect(x: 0, y: 0, width: 240, height: 2000))

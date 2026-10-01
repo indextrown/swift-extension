@@ -229,11 +229,14 @@ struct ThumbnailComponent: ViewComponent, Equatable {
 
 수명이 끝나는 시점은 호스트마다 조금 달라요.
 
-| 호스트 | 다음 갱신 직전 | 화면에서 빠질 때 | 다시 붙을 때 |
-| --- | --- | --- | --- |
-| `ComponentHostView` | 취소 | window에서 빠지면 취소 | 마지막 컴포넌트로 다시 갱신 |
-| 셀 | 취소 (재사용으로 새 설정이 들어올 때) | 취소하지 않아요. 셀은 화면 밖으로 스크롤돼도 window에서 빠지지 않아요 | — |
-| `ComponentView` | 취소 | `dismantleUIView`에서 취소 | SwiftUI가 새 뷰를 만들어요 |
+| 호스트 | 다음 갱신 직전 | 화면에서 빠질 때 | 다시 붙을 때 | 해제될 때 |
+| --- | --- | --- | --- | --- |
+| `ComponentHostView` | 취소 | window에서 빠지면 취소 | 마지막 컴포넌트로 다시 갱신 | 취소 |
+| 셀 | 취소 (재사용으로 새 설정이 들어올 때) | 취소하지 않아요. 셀은 화면 밖으로 스크롤돼도 window에서 빠지지 않아요 | — | 취소 |
+| `ComponentView` | 취소 | `dismantleUIView`에서 취소 | SwiftUI가 새 뷰를 만들어요 | 취소 |
+
+- `ComponentHostView`가 window에서 빠져 있는 동안 `update(_:)`를 부르면, 이미 취소된 context로 갱신해요. 뷰의 값은 바뀌지만 `task(priority:_:)`로 시작한 작업은 바로 취소되고, `onCancel(_:)`에 등록한 동작은 바로 실행돼요. 다시 붙으면 새 수명으로 한 번 더 갱신해요.
+- 창에 붙은 적 없는 호스트 뷰나 셀이 해제되면 다음 갱신이 오지 않아요. 그래서 호스트가 해제될 때 마지막 갱신의 작업을 취소해요.
 
 - SwiftUI는 뷰를 만든 직후 `updateUIView`를 한 번 더 불러요. 그래서 `Equatable`이 아닌 컴포넌트는 처음 나타날 때 두 번 갱신돼요. `Equatable` 컴포넌트는 두 번째 갱신을 건너뛰어요.
 - 셀은 상태(강조·선택)가 바뀔 때도 설정이 다시 들어와요. 이 경우에도 `Equatable`이면 갱신을 건너뛰어요.
@@ -290,7 +293,7 @@ xcodebuild test \
 | iOS 15 실기기·시뮬레이터 | 너비 기반 `intrinsicContentSize` 방식은 iOS 18.3·27에서만 확인했어요. `확인 필요`: iOS 15 런타임에서 `UIKitComponentsTests` 실행 | iOS 15 런타임을 구하면 실행해서 결과를 이 표에 적기 |
 | 가로 `ScrollView` | 제안 너비가 없으면 뷰의 자연 크기를 돌려줘요. 측정하지 않았어요 | 가로 캐러셀 데모와 테스트 추가 |
 | iOS 15 셀의 비동기 크기 변경 | `selfSizingInvalidation`은 iOS 16부터라서, iOS 15에서는 셀을 다시 구성해야 할 수 있어요 | iOS 15에서 확인 |
-| 화면 밖 셀의 작업 | 셀이 재사용될 때만 취소돼요 | 어댑터 타깃에서 `didEndDisplaying`에 연결 |
+| 화면 밖 셀의 작업 | 셀이 재사용되거나 해제될 때 취소돼요. 화면 밖으로 스크롤된 것만으로는 취소되지 않아요 | 어댑터 타깃에서 `didEndDisplaying`에 연결 |
 | 상호작용 | 이벤트는 클로저로 받아요 | `onTap`·`pressedEffect`·`onLongPress` 같은 modifier. 모든 modifier가 조건부로 `View`를 따르게 해요 |
 | 섹션 선언형 목록 | 데이터 소스는 쓰는 쪽이 만들어요 | `CollectionViewAdapter`를 이 타깃에 의존하는 별도 타깃으로 |
 | `ComponentContext` 생성 | `init`이 내부라서, 쓰는 쪽 테스트에서 `updateView(_:context:)`를 직접 부를 수 없어요 | 필요해지면 테스트용 공개 생성자 |

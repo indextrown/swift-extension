@@ -170,6 +170,18 @@ private func alternatingTexts(count: Int, flipped: Bool = false) -> [String] {
 }
 
 @MainActor
+@Test func releasedContentViewCancelsWork() {
+    let cancellations = Counter()
+
+    autoreleasepool {
+        let contentView = CancellationComponent(cancellations: cancellations).contentConfiguration().makeContentView()
+        #expect(contentView.configuration is ComponentConfiguration<CancellationComponent>)
+    }
+
+    #expect(cancellations.value == 1)
+}
+
+@MainActor
 @Test func contentViewSupportsOnlySameComponentType() {
     guard #available(iOS 16.0, *) else { return }
 

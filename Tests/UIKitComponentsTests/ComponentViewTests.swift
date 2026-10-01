@@ -105,6 +105,27 @@ import UIKit
 }
 
 @MainActor
+@Test func componentViewRemeasuresWhenWidthChanges() throws {
+    let (window, hostingController) = makeWindow(width: 240, rootView: ScrollView {
+        VStack(spacing: 0) {
+            ComponentView(LabelComponent(longText))
+        }
+    })
+    let hostView = try #require(descendants(of: SwiftUIComponentHostView<LabelComponent>.self, in: window).first)
+    #expect(abs(hostView.frame.height - expectedHeight(longText, width: 240)) < 1)
+
+    /// 회전이나 분할 화면처럼 SwiftUI가 다른 너비를 제안하는 경우예요.
+    for width in [360, 200] as [CGFloat] {
+        window.frame = CGRect(x: 0, y: 0, width: width, height: 3000)
+        hostingController.view.frame = window.bounds
+        runLayout(window)
+
+        #expect(hostView.frame.width == width)
+        #expect(abs(hostView.frame.height - expectedHeight(longText, width: width)) < 1)
+    }
+}
+
+@MainActor
 @Test func componentViewCancelsWhenRemovedFromHierarchy() {
     let cancellations = Counter()
     let (window, hostingController) = makeWindow(

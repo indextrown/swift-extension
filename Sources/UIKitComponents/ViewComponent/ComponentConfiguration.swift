@@ -21,7 +21,7 @@ import UIKit
 /// ```
 ///
 /// 셀은 화면 밖으로 스크롤돼도 window에서 빠지지 않습니다. 그래서 이전 갱신의 작업은 셀이 재사용되어
-/// 새 설정이 들어올 때 취소됩니다.
+/// 새 설정이 들어오거나, 셀이나 content view가 해제될 때 취소됩니다.
 public struct ComponentConfiguration<Component: ViewComponent>: UIContentConfiguration {
 
     // MARK: - Property

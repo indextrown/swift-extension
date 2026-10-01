@@ -29,6 +29,9 @@ final class ComponentHost<Component: ViewComponent> {
     private var context: ComponentContext?
     private var layoutInvalidation: () -> Void = {}
 
+    /// 화면에서 빠져 있는지 나타냅니다. 빠져 있는 동안 갱신하면 뷰만 바꾸고 작업은 시작하지 않습니다.
+    private var isSuspended = false
+
 
 
     // MARK: - Life Cycle
@@ -36,6 +39,21 @@ final class ComponentHost<Component: ViewComponent> {
     init(component: Component) {
         self.component = component
         self.view = component.makeView()
+    }
+
+    /// 호스트를 가진 뷰가 해제되면 마지막 갱신의 작업도 끝냅니다.
+    ///
+    /// 셀이 사라지거나, 창에 붙은 적 없는 호스트 뷰가 해제되면 다음 갱신이 오지 않습니다.
+    /// 여기서 취소하지 않으면 `task(priority:_:)`로 시작한 작업이 뷰를 붙잡은 채 계속 돕니다.
+    /// UIView는 메인 스레드에서 해제되므로 보통 바로 취소하고, 다른 스레드라면 메인 액터로 넘겨 취소합니다.
+    deinit {
+        guard let context = self.context else { return }
+
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { context.cancel() }
+        } else {
+            Task { @MainActor in context.cancel() }
+        }
     }
 
 
@@ -67,13 +85,14 @@ final class ComponentHost<Component: ViewComponent> {
 
     /// 새 상태를 반영합니다.
     ///
-    /// `Equatable` 컴포넌트가 이전 값과 같고 수명이 살아 있으면 갱신을 건너뜁니다.
+    /// `Equatable` 컴포넌트가 이전 값과 같으면 갱신을 건너뜁니다. 화면에서 빠져 있는 동안에는
+    /// 이미 취소된 context로 갱신해서 뷰만 바꾸고 작업은 시작하지 않습니다.
     ///
     /// - Parameter component: 반영할 컴포넌트입니다.
     /// - Returns: `updateView(_:context:)`를 불렀으면 `true`입니다.
     @discardableResult
     func update(_ component: Component) -> Bool {
-        let isUnchanged = self.context != nil && self.isEqual(self.component, component)
+        let isUnchanged = self.isEqual(self.component, component)
         self.component = component
         guard !isUnchanged else { return false }
 
@@ -83,14 +102,15 @@ final class ComponentHost<Component: ViewComponent> {
 
     /// 화면에서 빠질 때 이번 갱신의 작업을 취소합니다.
     func suspend() {
+        self.isSuspended = true
         self.context?.cancel()
-        self.context = nil
     }
 
-    /// 화면에 다시 붙을 때, 취소된 작업이 있으면 마지막 컴포넌트로 다시 갱신합니다.
+    /// 화면에 다시 붙을 때 마지막 컴포넌트로 다시 갱신해서 작업을 새로 시작합니다.
     func resumeIfNeeded() {
-        guard self.context == nil else { return }
+        guard self.isSuspended else { return }
 
+        self.isSuspended = false
         self.performUpdate()
     }
 
@@ -125,6 +145,10 @@ final class ComponentHost<Component: ViewComponent> {
         self.context?.cancel()
 
         let context = ComponentContext(layoutInvalidation: self.layoutInvalidation)
+        if self.isSuspended {
+            /// 화면 밖에서는 작업이 돌지 않게 미리 취소해 둡니다. 등록한 정리 동작은 바로 실행됩니다.
+            context.cancel()
+        }
         self.context = context
         self.component.updateView(self.view, context: context)
         self.updateCount += 1
