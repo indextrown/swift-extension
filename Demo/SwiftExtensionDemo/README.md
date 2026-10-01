@@ -11,17 +11,23 @@ SwiftExtensionDemo/
 ├── Support/
 │   ├── DemoItem.swift                   목록의 행. 목적지는 SwiftUI View든 UIKit이든 상관없어요
 │   └── UIKitContainer.swift             UIViewControllerContainer / UIViewContainer 범용 포장
-└── BottomSheet/
-    ├── BottomSheetDemoView.swift        UITabBarController를 컨테이너로 감싼 화면. 불투명·유리 탭바 토글
-    ├── BottomSheetHostViewController    MKMapView 위에 시트를 붙이는 UIKit 화면. Locate 버튼은 sheet.view.topAnchor에 묶임
-    ├── MapHostViewModel                 UIKit 화면의 ViewModel. 위치 권한·현재 위치를 클로저로 알림
-    ├── PlaceListViewController          시트 안 콘텐츠 (UITableView 40행)
-    ├── SwiftUIBottomSheetDemoScreen     SwiftUI 버전. Map 위 TabView 탭 콘텐츠에 bottomSheet(detent:) 적용
-    ├── MapDemoViewModel                 SwiftUI 화면의 ViewModel. @Observable로 위치를 알림
-    ├── NativeSheetDemoView              비교용. 같은 탭바 구성에서 애플 UISheetPresentationController를 띄움
-    ├── SwiftUINativeSheetDemoScreen     비교용. 같은 TabView 구성에서 애플 .sheet + presentationDetents를 띄움
-    ├── ContentSizedSheetDemoView        .content(padding:) 단계. 상태 카드 몇 장 높이만큼만 올라오는 시트 (UIKit)
-    └── SwiftUIContentSizedSheetDemoScreen  같은 내용의 SwiftUI 버전
+├── BottomSheet/
+│   ├── BottomSheetDemoView.swift        UITabBarController를 컨테이너로 감싼 화면. 불투명·유리 탭바 토글
+│   ├── BottomSheetHostViewController    MKMapView 위에 시트를 붙이는 UIKit 화면. Locate 버튼은 sheet.view.topAnchor에 묶임
+│   ├── MapHostViewModel                 UIKit 화면의 ViewModel. 위치 권한·현재 위치를 클로저로 알림
+│   ├── PlaceListViewController          시트 안 콘텐츠 (UITableView 40행)
+│   ├── SwiftUIBottomSheetDemoScreen     SwiftUI 버전. Map 위 TabView 탭 콘텐츠에 bottomSheet(detent:) 적용
+│   ├── MapDemoViewModel                 SwiftUI 화면의 ViewModel. @Observable로 위치를 알림
+│   ├── NativeSheetDemoView              비교용. 같은 탭바 구성에서 애플 UISheetPresentationController를 띄움
+│   ├── SwiftUINativeSheetDemoScreen     비교용. 같은 TabView 구성에서 애플 .sheet + presentationDetents를 띄움
+│   ├── ContentSizedSheetDemoView        .content(padding:) 단계. 상태 카드 몇 장 높이만큼만 올라오는 시트 (UIKit)
+│   └── SwiftUIContentSizedSheetDemoScreen  같은 내용의 SwiftUI 버전
+└── ViewComponent/
+    ├── Notice.swift                     데모 공지 데이터. 글 길이를 골라 NoticeComponent로 바꿔요
+    ├── NoticeComponent.swift            평범한 UIKit 뷰 NoticeView와 Equatable 컴포넌트. View도 채택해요
+    ├── ToggleRowComponent.swift         스위치 한 줄 뷰와 클로저로 값을 알리는 컴포넌트
+    ├── ComponentUIKitDemoViewController 스택뷰에 ComponentHostView, 목록 셀에 contentConfiguration()
+    └── ComponentSwiftUIDemoScreen       같은 컴포넌트를 ScrollView 안에 그대로 넣은 SwiftUI 화면
 ```
 
 목록은 `UIKitExtension`·`SwiftUIExtension` 섹션에 각각 세 행이에요. 첫 행이 이 패키지의 커스텀 시트, 둘째 행이 같은 단계(96pt·medium·large)로 맞춘 애플 기본 시트, 셋째 행이 콘텐츠 높이만큼만 올라오는 `.content` 단계 데모예요.
@@ -35,6 +41,8 @@ SwiftExtensionDemo/
 애플 기본 시트 화면은 열리면 기본 탭바가 먼저 보여요. `시트 열기`를 누르면 시트가 탭바를 덮어요.
 
 `콘텐츠 높이 시트`는 스크롤이 필요 없는 상태 카드 두 장을 시트에 넣고 `.content(padding:)` 단계 하나로 띄워요. 시트가 카드 높이를 재서 아래 여백 없이 딱 맞게 올라와요. 오른쪽 위 `⋯` 메뉴의 `카드 3장`을 켜면 시트가 다시 재서 스프링으로 커지고(UIKit은 `invalidateContentHeight()`, SwiftUI는 다시 그리면서 저절로), `아래 여백`을 바꾸면 `.content(padding:)`이 바뀐 레이아웃으로 자리를 다시 잡아요. 상태 라벨의 `visible`이 탭바 위에 보이는 높이예요.
+
+`UIKitComponents` 섹션에는 두 행이 있어요. `UIKit에서 쓰기`와 `SwiftUI에서 쓰기`는 같은 `NoticeComponent`·`ToggleRowComponent`를 각각 UIKit과 SwiftUI에 넣어요. 위쪽 `짧게`·`길게`를 바꾸면 두 화면 모두 뷰를 새로 만들지 않고 글 길이에 맞춰 높이를 다시 재요. SwiftUI 화면에는 `.frame(height:)`가 하나도 없어요. 스위치를 누르면 UIKit은 `update(_:)`로, SwiftUI는 `@State`로 제목이 바뀌어요.
 
 ## 데모 추가하기
 
