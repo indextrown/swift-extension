@@ -21,6 +21,7 @@ components live in their own targets so clients only link what they use.
 | `UIComponentsCore` | Available | Framework-neutral logic shared by the UI modules (bottom sheet detents, layout math, motion). Foundation only. Re-exported by both UI modules. |
 | `UIKitExtension` | Available | Reusable UIKit components. Currently `BottomSheetController`, a bottom sheet that rises from behind the tab bar. |
 | `SwiftUIExtension` | Available | Reusable SwiftUI components. Currently the `bottomSheet(detent:)` modifier and `BottomSheetScrollView` (iOS 17+). |
+| `UIKitComponents` | Available | Wrap a plain `UIView` in a `ViewComponent` and place it in UIKit views, stack views, table and collection view cells, and SwiftUI with the same code (iOS 15+). Imports UIKit and SwiftUI together. |
 
 Core modules never import UIKit, SwiftUI, or AppKit, so they can be used on
 servers and command line tools as well as Apple platforms.
@@ -97,7 +98,8 @@ Sources/
 ├── SwiftExtension/    package entry point
 ├── UIComponentsCore/  logic shared by the UI modules (Foundation only)
 ├── UIKitExtension/    reusable UIKit components
-└── SwiftUIExtension/  reusable SwiftUI components
+├── SwiftUIExtension/  reusable SwiftUI components
+└── UIKitComponents/   UIKit views as components for UIKit, cells, and SwiftUI
 Tests/                 one test target per product
 Demo/                  sample apps: AlgorithmDemo (macOS), SwiftExtensionDemo (iOS)
 docs/                  architecture and development guides (Korean)
@@ -112,6 +114,7 @@ Development guides are written in Korean.
 - [성능 기준](docs/architecture/performance.md) — value semantics, allocation, measurement
 - [UI 모듈 가이드](docs/architecture/ui-modules.md) — rules for the UIKit and SwiftUI targets
 - [바텀시트](docs/components/bottom-sheet.md) — `BottomSheetController` usage, scroll tracking, verification
+- [뷰 컴포넌트](docs/components/view-component.md) — `ViewComponent` in UIKit views, cells, and SwiftUI; sizing and render lifetime
 - [Swift 스타일](docs/development/swiftstyle.md) — formatting and naming
 - [테스트](docs/development/testing.md) — test targets and commands
 - [Git 작업 흐름](docs/development/gitflow.md) — branches, commits, pull requests

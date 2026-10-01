@@ -14,6 +14,7 @@ struct DemoListView: View {
         List {
             self.section(title: "UIKitExtension", items: DemoItem.uiKit)
             self.section(title: "SwiftUIExtension", items: DemoItem.swiftUI)
+            self.section(title: "UIKitComponents", items: DemoItem.uiKitComponents)
         }
         .navigationTitle("SwiftExtension")
     }

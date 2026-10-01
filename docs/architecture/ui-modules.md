@@ -4,7 +4,7 @@
 
 ## 목차
 
-- [타깃 구성 계획](#타깃-구성-계획)
+- [타깃 구성](#타깃-구성)
 - [의존성 규칙](#의존성-규칙)
 - [플랫폼 분기와 가용성](#플랫폼-분기와-가용성)
 - [뷰 API 설계 규칙](#뷰-api-설계-규칙)
@@ -19,8 +19,10 @@
 | --- | --- | --- | --- |
 | `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰, `UIView`·`UIViewController` 확장 |
 | `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰, `View` 확장, `ViewModifier` |
+| `UIKitComponents` | `UIKitComponents` | `Sources/UIKitComponents/` | UIKit 뷰를 `ViewComponent`로 감싸 UIKit·셀·SwiftUI에 같은 코드로 넣는 연결 |
 
 - product를 각각 따로 두었어요. 쓰는 쪽이 필요한 product만 의존성에 추가하면 다른 쪽은 빌드도 링크도 되지 않아요. SwiftUI만 쓰는 앱이 UIKit 심볼을 링크할 이유가 없어요.
+- `UIKitComponents`는 이 규칙의 예외예요. UIKit 뷰를 SwiftUI로 잇는 것이 목적이라 UIKit과 SwiftUI를 함께 import해요. 이 타깃을 쓰는 쪽은 이미 UIKit 뷰를 만드는 쪽이라서 UIKit 링크가 문제 되지 않아요.
 - 같은 컴포넌트를 두 프레임워크로 제공할 때는 표시 로직을 각 타깃에 각각 두고, 계산·상태 규칙처럼 UI와 무관한 부분만 코어 모듈로 내려요.
 - 최소 배포 타깃은 패키지 전체 설정(iOS 15, macOS 12, tvOS 15, watchOS 8)을 그대로 따라요. 더 높은 버전이 필요한 API에는 `platforms`를 올리지 말고 선언별로 `@available`을 붙여요.
 
@@ -31,12 +33,14 @@
 | `UIComponentsCore` | `BottomSheetAnchor` `BottomSheetDetent` `BottomSheetLayout` `BottomSheetBehavior` — 두 UI 타깃이 공유하는 단계·위치·움직임 계산 | [바텀시트](../components/bottom-sheet.md) |
 | `UIKitExtension` | `BottomSheetController` — 탭바 뒤에서 올라오는 바텀시트 | [바텀시트](../components/bottom-sheet.md) |
 | `SwiftUIExtension` | `bottomSheet(detent:)` 수정자, `BottomSheetScrollView` — 같은 시트의 SwiftUI 판. iOS 17+ | [바텀시트](../components/bottom-sheet.md) |
+| `UIKitComponents` | `ViewComponent`, `ComponentContext`, `ComponentHostView`, `ComponentConfiguration`, `ComponentView` — UIKit 뷰 하나를 UIKit 뷰·스택뷰·셀·SwiftUI에 넣는 연결. iOS 15+ | [뷰 컴포넌트](../components/view-component.md) |
 
 ## 의존성 규칙
 
 - UI 타깃은 `Algorithm`, `SwiftExtension` 같은 코어 모듈에 의존할 수 있어요.
 - 코어 모듈은 UI 타깃에 의존하지 않아요. UIKit·SwiftUI를 import하지도 않아요.
 - `UIKitExtension`과 `SwiftUIExtension`은 서로 의존하지 않아요. 둘이 같은 코드를 쓰게 되면 `UIComponentsCore`로 내려요. 이 타깃은 `import Foundation`만 쓰고, 두 UI 타깃이 `@_exported import`로 다시 내보내요.
+- `UIKitComponents`는 다른 UI 타깃에 의존하지 않고, 다른 UI 타깃도 이 타깃에 의존하지 않아요. UIKit과 SwiftUI를 한 타깃에서 함께 import하는 건 이 타깃만 해요. 브리지가 목적이라 두 프레임워크가 같은 파일 묶음 안에 있어야 하기 때문이에요.
 - `@_exported`는 밑줄이 붙은 비공식 속성이지만 SwiftPM 라이브러리에서 널리 쓰여요. 이걸 쓰는 이유는 쓰는 쪽이 `import UIKitExtension` 하나로 끝나게 하기 위해서예요.
 - 외부 UI 라이브러리(SnapKit 등)를 의존성으로 추가하지 않아요. 레이아웃은 표준 API로 작성해요.
 
@@ -102,11 +106,11 @@ public struct BadgeStyle {
 - 제스처 손맛처럼 테스트로 잡기 어려운 동작은 `Demo/SwiftExtensionDemo` 앱에서 눌러 보고, 확인한 기기와 OS 버전을 PR에 적어요. 컴포넌트를 추가하면 `DemoListView`에 행을 하나 추가해요.
 - 표시 결과는 스크린샷이나 프리뷰로 확인하고, 확인한 플랫폼과 OS 버전을 PR에 적어요.
 - CI의 `Build`·`Test` 워크플로는 macOS 러너에서 `swift build`와 `swift test`를 돌려요. macOS에는 UIKit이 없어서 `#if canImport(UIKit)`로 감싼 코드는 **CI에서도 컴파일되지 않아요.**
-- `확인 필요`: iOS 시뮬레이터 빌드를 CI에 추가할지 여부. UIKit 컴포넌트가 들어가는 시점에 정해요. `xcodebuild -scheme UIKitExtension -destination 'platform=iOS Simulator,...'` 형태가 필요해요.
+- `확인 필요`: iOS 시뮬레이터 빌드를 CI에 추가할지 여부. `xcodebuild -scheme SwiftExtension-Package -destination 'platform=iOS Simulator,...'` 형태가 필요해요. `UIKitExtension`과 `UIKitComponents`가 모두 UIKit 코드라서 지금은 PR마다 로컬에서 시뮬레이터 테스트를 돌려 결과를 적어요.
 
 ## 컴포넌트를 추가할 때
 
-1. 어느 타깃에 넣을지 정해요. UIKit 뷰는 `UIKitExtension`, SwiftUI 뷰는 `SwiftUIExtension`이에요. 둘 다 필요하면 각각 구현하고 공통 계산 로직만 코어 모듈로 내려요.
+1. 어느 타깃에 넣을지 정해요. UIKit 뷰는 `UIKitExtension`, SwiftUI 뷰는 `SwiftUIExtension`이에요. 둘 다 필요하면 각각 구현하고 공통 계산 로직만 코어 모듈로 내려요. UIKit 뷰 하나를 SwiftUI에서도 그대로 쓰면 되는 컴포넌트는 `ViewComponent`로 만들어요. [뷰 컴포넌트](../components/view-component.md)를 참고해요.
 2. `Sources/<타깃>/<컴포넌트>/` 디렉터리를 만들고 타입 하나당 파일 하나로 나눠요.
 3. UIKit 코드는 `#if canImport(UIKit) && !os(watchOS)`로 감싸요.
 4. 코어 모듈의 타입이 필요하면 `Package.swift`의 해당 타깃 `dependencies`에 추가해요. 지금은 두 UI 타깃 모두 의존성이 없어요.

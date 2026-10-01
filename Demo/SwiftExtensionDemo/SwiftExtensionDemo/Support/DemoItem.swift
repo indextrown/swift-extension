@@ -97,4 +97,24 @@ extension DemoItem {
             SwiftUIContentSizedSheetDemoScreen()
         }
     ]
+
+    /// `UIKitComponents` 데모입니다. 같은 컴포넌트를 UIKit과 SwiftUI에 넣어 봅니다.
+    static let uiKitComponents: [DemoItem] = [
+        DemoItem(
+            id: "view-component-uikit",
+            title: "UIKit에서 쓰기",
+            subtitle: "ComponentHostView · contentConfiguration()",
+            systemImage: "square.stack"
+        ) {
+            ComponentUIKitDemoScreen()
+        },
+        DemoItem(
+            id: "view-component-swiftui",
+            title: "SwiftUI에서 쓰기",
+            subtitle: "ComponentView · View 채택",
+            systemImage: "swift"
+        ) {
+            ComponentSwiftUIDemoScreen()
+        }
+    ]
 }

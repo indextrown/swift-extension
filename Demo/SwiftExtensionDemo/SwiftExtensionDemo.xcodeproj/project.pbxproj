@@ -23,6 +23,12 @@
 		5C0000000000000000000036 /* SwiftUIContentSizedSheetDemoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000035 /* SwiftUIContentSizedSheetDemoScreen.swift */; };
 		5C000000000000000000002D /* MapHostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002B /* MapHostViewModel.swift */; };
 		5C000000000000000000002E /* MapDemoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000002C /* MapDemoViewModel.swift */; };
+		5C000000000000000000003B /* Notice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000003A /* Notice.swift */; };
+		5C000000000000000000003D /* NoticeComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000003C /* NoticeComponent.swift */; };
+		5C000000000000000000003F /* ToggleRowComponent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C000000000000000000003E /* ToggleRowComponent.swift */; };
+		5C0000000000000000000041 /* ComponentUIKitDemoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000040 /* ComponentUIKitDemoViewController.swift */; };
+		5C0000000000000000000043 /* ComponentSwiftUIDemoScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0000000000000000000042 /* ComponentSwiftUIDemoScreen.swift */; };
+		5C0000000000000000000038 /* UIKitComponents in Frameworks */ = {isa = PBXBuildFile; productRef = 5C0000000000000000000037 /* UIKitComponents */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +48,11 @@
 		5C0000000000000000000029 /* Demo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Demo.xcconfig; sourceTree = "<group>"; };
 		5C000000000000000000002B /* MapHostViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapHostViewModel.swift; sourceTree = "<group>"; };
 		5C000000000000000000002C /* MapDemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapDemoViewModel.swift; sourceTree = "<group>"; };
+		5C000000000000000000003A /* Notice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notice.swift; sourceTree = "<group>"; };
+		5C000000000000000000003C /* NoticeComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoticeComponent.swift; sourceTree = "<group>"; };
+		5C000000000000000000003E /* ToggleRowComponent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleRowComponent.swift; sourceTree = "<group>"; };
+		5C0000000000000000000040 /* ComponentUIKitDemoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentUIKitDemoViewController.swift; sourceTree = "<group>"; };
+		5C0000000000000000000042 /* ComponentSwiftUIDemoScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentSwiftUIDemoScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +62,7 @@
 			files = (
 				5C0000000000000000000001 /* UIKitExtension in Frameworks */,
 				5C0000000000000000000026 /* SwiftUIExtension in Frameworks */,
+				5C0000000000000000000038 /* UIKitComponents in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +86,7 @@
 				5C0000000000000000000016 /* DemoListView.swift */,
 				5C0000000000000000000020 /* Support */,
 				5C000000000000000000001E /* BottomSheet */,
+				5C0000000000000000000039 /* ViewComponent */,
 			);
 			path = SwiftExtensionDemo;
 			sourceTree = "<group>";
@@ -127,6 +140,18 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		5C0000000000000000000039 /* ViewComponent */ = {
+			isa = PBXGroup;
+			children = (
+				5C000000000000000000003A /* Notice.swift */,
+				5C000000000000000000003C /* NoticeComponent.swift */,
+				5C000000000000000000003E /* ToggleRowComponent.swift */,
+				5C0000000000000000000040 /* ComponentUIKitDemoViewController.swift */,
+				5C0000000000000000000042 /* ComponentSwiftUIDemoScreen.swift */,
+			);
+			path = ViewComponent;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -146,6 +171,7 @@
 			packageProductDependencies = (
 				5C0000000000000000000002 /* UIKitExtension */,
 				5C0000000000000000000025 /* SwiftUIExtension */,
+				5C0000000000000000000037 /* UIKitComponents */,
 			);
 			productName = SwiftExtensionDemo;
 			productReference = 5C0000000000000000000005 /* SwiftExtensionDemo.app */;
@@ -217,6 +243,11 @@
 				5C0000000000000000000032 /* SwiftUINativeSheetDemoScreen.swift in Sources */,
 				5C0000000000000000000034 /* ContentSizedSheetDemoView.swift in Sources */,
 				5C0000000000000000000036 /* SwiftUIContentSizedSheetDemoScreen.swift in Sources */,
+				5C000000000000000000003B /* Notice.swift in Sources */,
+				5C000000000000000000003D /* NoticeComponent.swift in Sources */,
+				5C000000000000000000003F /* ToggleRowComponent.swift in Sources */,
+				5C0000000000000000000041 /* ComponentUIKitDemoViewController.swift in Sources */,
+				5C0000000000000000000043 /* ComponentSwiftUIDemoScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -348,6 +379,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5C0000000000000000000011 /* XCLocalSwiftPackageReference "../.." */;
 			productName = SwiftUIExtension;
+		};
+		5C0000000000000000000037 /* UIKitComponents */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C0000000000000000000011 /* XCLocalSwiftPackageReference "../.." */;
+			productName = UIKitComponents;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
