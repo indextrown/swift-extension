@@ -64,9 +64,11 @@ final class ComponentHost<Component: ViewComponent> {
     ///
     /// - Parameters:
     ///   - container: 뷰를 담을 호스트 뷰입니다.
+    ///   - updatesImmediately: `false`면 첫 갱신을 `update(_:)`나 `performInitialUpdateIfNeeded()`까지 미룹니다.
     ///   - layoutInvalidation: 컴포넌트가 `invalidateLayout()`을 부르면 실행할 동작입니다.
     func attach(
         to container: UIView,
+        updatesImmediately: Bool = true,
         layoutInvalidation: @escaping () -> Void
     ) {
         self.layoutInvalidation = layoutInvalidation
@@ -80,6 +82,17 @@ final class ComponentHost<Component: ViewComponent> {
             self.view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
+        if updatesImmediately {
+            self.performUpdate()
+        }
+    }
+
+    /// 아직 한 번도 갱신하지 않았으면 마지막 컴포넌트로 갱신합니다.
+    ///
+    /// 첫 갱신을 미룬 호스트가 크기를 재거나 배치하기 전에 부릅니다.
+    func performInitialUpdateIfNeeded() {
+        guard self.updateCount == 0 else { return }
+
         self.performUpdate()
     }
 
@@ -92,7 +105,7 @@ final class ComponentHost<Component: ViewComponent> {
     /// - Returns: `updateView(_:context:)`를 불렀으면 `true`입니다.
     @discardableResult
     func update(_ component: Component) -> Bool {
-        let isUnchanged = self.isEqual(self.component, component)
+        let isUnchanged = self.updateCount > 0 && self.isEqual(self.component, component)
         self.component = component
         guard !isUnchanged else { return false }
 

@@ -17,6 +17,10 @@ import UIKit
 /// iOS 15에는 `sizeThatFits`가 없어서 SwiftUI가 `intrinsicContentSize`만 봅니다. 그래서 배치된 너비를
 /// 기억해 두고, 그 너비에서 잰 높이를 intrinsic 높이로 알립니다. 너비가 바뀌거나 갱신하면 다시 재도록 무효화합니다.
 ///
+/// SwiftUI는 `makeUIView` 직후 `updateUIView`를 한 번 더 부릅니다. 만들 때 바로 갱신하면 `Equatable`이 아닌
+/// 컴포넌트가 처음 나타날 때 두 번 갱신되고, 첫 갱신에서 시작한 작업이 곧바로 취소됩니다. 그래서 이 뷰는 첫 갱신을
+/// 첫 `update(_:)`까지 미룹니다. 그 전에 크기를 재거나 배치하거나 창에 붙으면 그때 갱신합니다.
+///
 /// 세로 허깅·압축 저항을 `required`로 둬서 SwiftUI가 높이를 늘리거나 줄이지 않게 합니다.
 /// UIKit용 `ComponentHostView`는 스택뷰에서 제약이 충돌하지 않도록 기본값을 그대로 둡니다.
 @MainActor
@@ -52,7 +56,7 @@ final class SwiftUIComponentHostView<Component: ViewComponent>: UIView {
 
         return CGSize(
             width: UIView.noIntrinsicMetric,
-            height: self.host.fittingSize(width: self.measuredWidth).height
+            height: self.fittingSize(width: self.measuredWidth).height
         )
     }
 
@@ -70,7 +74,7 @@ final class SwiftUIComponentHostView<Component: ViewComponent>: UIView {
         super.init(frame: .zero)
 
         self.setAttribute()
-        self.host.attach(to: self) { [weak self] in
+        self.host.attach(to: self, updatesImmediately: false) { [weak self] in
             /// 갱신이 끝난 뒤 크기가 바뀐 경우입니다. iOS 16 이상에서도 SwiftUI는 이 무효화를 보고 `sizeThatFits`를 다시 부릅니다.
             self?.invalidateIntrinsicContentSize()
         }
@@ -81,7 +85,14 @@ final class SwiftUIComponentHostView<Component: ViewComponent>: UIView {
         fatalError("init(coder:)는 지원하지 않습니다.")
     }
 
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+
+        self.host.performInitialUpdateIfNeeded()
+    }
+
     override func layoutSubviews() {
+        self.host.performInitialUpdateIfNeeded()
         super.layoutSubviews()
 
         guard
@@ -115,6 +126,7 @@ final class SwiftUIComponentHostView<Component: ViewComponent>: UIView {
     }
 
     func fittingSize(width: CGFloat?) -> CGSize {
+        self.host.performInitialUpdateIfNeeded()
         return self.host.fittingSize(width: width)
     }
 

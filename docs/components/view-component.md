@@ -239,7 +239,7 @@ struct ThumbnailComponent: ViewComponent, Equatable {
 - `ComponentHostView`가 window에서 빠져 있는 동안 `update(_:)`를 부르면, 이미 취소된 context로 갱신해요. 뷰의 값은 바뀌지만 `task(priority:_:)`는 작업을 시작하지 않고, `onCancel(_:)`에 등록한 동작은 바로 실행돼요. 다시 붙으면 새 수명으로 한 번 더 갱신해요.
 - 창에 붙은 적 없는 호스트 뷰나 셀이 해제되면 다음 갱신이 오지 않아요. 그래서 호스트가 해제될 때 마지막 갱신의 작업을 취소해요.
 
-- SwiftUI는 뷰를 만든 직후 `updateUIView`를 한 번 더 불러요. 그래서 `Equatable`이 아닌 컴포넌트는 처음 나타날 때 두 번 갱신돼요. `Equatable` 컴포넌트는 두 번째 갱신을 건너뛰어요.
+- SwiftUI는 뷰를 만든 직후 `updateUIView`를 불러요. 만들 때도 갱신하면 `Equatable`이 아닌 컴포넌트가 두 번 갱신되고, 첫 갱신에서 시작한 작업이 곧바로 취소돼요. 그래서 `ComponentView`는 만들 때 갱신하지 않고 첫 `updateUIView`에서 한 번만 갱신해요. 그 전에 크기를 재거나 배치하면 그때 갱신해요.
 - 셀은 강조·선택 상태가 바뀔 때도 `updated(for:)`로 만든 같은 설정이 다시 들어와요. 이때는 컴포넌트가 `Equatable`이든 아니든 갱신하지 않아요. 그래서 상태가 바뀔 때마다 작업이 취소됐다가 다시 시작되지 않아요.
 
 ## 성능

@@ -132,13 +132,39 @@ import UIKit
         width: 240,
         rootView: AnyView(ComponentView(CancellationComponent(cancellations: cancellations)))
     )
-    /// SwiftUI는 뷰를 만든 직후 `updateUIView`를 한 번 더 불러서, 그때 첫 갱신의 작업이 취소될 수 있어요.
-    let cancellationsBeforeRemoval = cancellations.value
+    /// 첫 갱신을 `updateUIView`까지 미뤄서, 나타나는 동안에는 취소가 없어요.
+    #expect(cancellations.value == 0)
 
     hostingController.rootView = AnyView(EmptyView())
     runLayout(window)
 
-    #expect(cancellations.value == cancellationsBeforeRemoval + 1)
+    #expect(cancellations.value == 1)
+}
+
+@MainActor
+@Test func componentViewUpdatesNonEquatableComponentOnceOnAppear() throws {
+    let updates = Counter()
+    let (window, _) = makeWindow(width: 240, rootView: ScrollView {
+        VStack(spacing: 0) {
+            ComponentView(ClosureComponent(text: longText) { updates.value += 1 })
+        }
+    })
+
+    let hostView = try #require(descendants(of: SwiftUIComponentHostView<ClosureComponent>.self, in: window).first)
+    #expect(updates.value == 1)
+    #expect(hostView.updateCount == 1)
+    #expect(abs(hostView.frame.height - expectedHeight(longText, width: 240)) < 1)
+}
+
+@MainActor
+@Test func hostMeasuredBeforeFirstUpdateUsesComponentFromMake() {
+    let hostView = SwiftUIComponentHostView(LabelComponent(longText))
+    #expect(hostView.updateCount == 0)
+
+    let size = hostView.fittingSize(width: 240)
+
+    #expect(hostView.updateCount == 1)
+    #expect(size.height == expectedHeight(longText, width: 240))
 }
 
 @MainActor
