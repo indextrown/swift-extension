@@ -12,6 +12,7 @@
 | 성능 변경과 측정 | [성능 기준](docs/architecture/performance.md) | 성능을 주장하기 전에 Release 구성에서 측정해요. |
 | UIKit·SwiftUI 타깃 | [UI 모듈 가이드](docs/architecture/ui-modules.md) | 컴포넌트를 추가하거나 고칠 때 이 문서의 규칙을 따라요. |
 | 바텀시트 컴포넌트 | [바텀시트](docs/components/bottom-sheet.md) | `BottomSheetController`를 쓰거나 고치기 전에 단계·offset 개념과 검증 방법을 확인해요. |
+| 뷰 컴포넌트 | [뷰 컴포넌트](docs/components/view-component.md) | `ViewComponent`와 세 호스트(`ComponentHostView`, 셀, `ComponentView`)를 쓰거나 고치기 전에 크기 계산과 갱신 수명 규칙을 확인해요. |
 | Swift 코드 작성 규칙 | [Swift 스타일](docs/development/swiftstyle.md) | 주변 코드와 다르면 주변 코드를 먼저 확인해요. |
 | 테스트 타깃과 실행 명령 | [테스트](docs/development/testing.md) | 문서에 적힌 명령으로 실행하고 결과를 기록해요. |
 | 브랜치·커밋·PR 규칙 | [Git 작업 흐름](docs/development/gitflow.md) | 저장소에서 확인한 규칙을 따라요. |

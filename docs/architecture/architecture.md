@@ -8,7 +8,7 @@
 - [현재 타깃 구성](#현재-타깃-구성)
 - [모듈 경계 규칙](#모듈-경계-규칙)
 - [의존성 방향](#의존성-방향)
-- [계획 중인 UI 타깃](#계획-중인-ui-타깃)
+- [UI 타깃](#ui-타깃)
 - [새 자료구조를 추가하는 흐름](#새-자료구조를-추가하는-흐름)
 - [Labs에서 정식 모듈로 옮기는 기준](#labs에서-정식-모듈로-옮기는-기준)
 - [관련 문서](#관련-문서)
@@ -34,12 +34,14 @@
 | `UIComponentsCore` | `UIComponentsCore` | `Sources/UIComponentsCore/` | UI 타깃 둘이 함께 쓰는 프레임워크 중립 계산을 담아요. `import Foundation`만 써요. 지금은 바텀시트의 단계·레이아웃·움직임 값이 있어요. |
 | `UIKitExtension` | `UIKitExtension` | `Sources/UIKitExtension/` | UIKit 재사용 뷰와 확장을 담아요. 지금은 [바텀시트](../components/bottom-sheet.md) `BottomSheetController`가 있어요. |
 | `SwiftUIExtension` | `SwiftUIExtension` | `Sources/SwiftUIExtension/` | SwiftUI 재사용 뷰와 수정자를 담아요. 지금은 [바텀시트](../components/bottom-sheet.md) `bottomSheet(detent:)`가 있어요. |
+| `UIKitComponents` | `UIKitComponents` | `Sources/UIKitComponents/` | UIKit 뷰를 [뷰 컴포넌트](../components/view-component.md) `ViewComponent`로 감싸 UIKit 뷰·스택뷰·셀·SwiftUI에 같은 코드로 넣어요. UIKit과 SwiftUI를 함께 import해요. |
 | — | `AlgorithmTests` | `Tests/AlgorithmTests/` | `Algorithm` 테스트 |
 | — | `LabsTests` | `Tests/LabsTests/` | `Labs` 테스트 |
 | — | `SwiftExtensionTests` | `Tests/SwiftExtensionTests/` | `SwiftExtension` 테스트 |
 | — | `UIComponentsCoreTests` | `Tests/UIComponentsCoreTests/` | `UIComponentsCore` 테스트. macOS CI에서 돌아요 |
 | — | `UIKitExtensionTests` | `Tests/UIKitExtensionTests/` | `UIKitExtension` 테스트 |
 | — | `SwiftUIExtensionTests` | `Tests/SwiftUIExtensionTests/` | `SwiftUIExtension` 테스트 |
+| — | `UIKitComponentsTests` | `Tests/UIKitComponentsTests/` | `UIKitComponents` 테스트. 수명 규칙은 macOS CI에서, 나머지는 iOS 시뮬레이터에서 돌아요 |
 
 `Labs` 타깃은 `exclude: ["Stack"]`로 Playground 디렉터리를 빌드에서 제외해요. Playground를 새로 추가하면 `Package.swift`의 `exclude`도 함께 갱신해요.
 
@@ -64,11 +66,11 @@
 ## 의존성 방향
 
 ```text
-  ┌──────────────────┐   ┌──────────────────┐
-  │  UIKitExtension  │   │ SwiftUIExtension │   UI 타깃. 서로 의존하지 않아요
-  └─────────┬────────┘   └────────┬─────────┘
-            └───────────┬─────────┘
-                        ▼  @_exported로 다시 내보내요
+  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
+  │  UIKitExtension  │   │ SwiftUIExtension │   │ UIKitComponents  │   UI 타깃. 서로 의존하지 않아요
+  └─────────┬────────┘   └────────┬─────────┘   └──────────────────┘
+            └───────────┬─────────┘               UIKit + SwiftUI 브리지.
+                        ▼  @_exported로 다시 내보내요   다른 타깃에 의존하지 않아요
               ┌──────────────────┐
               │ UIComponentsCore │   UI 공용 계산. Foundation만 써요
               └──────────────────┘
@@ -83,7 +85,8 @@
    └───────────┘
 ```
 
-- UI 타깃 둘은 `UIComponentsCore`에 의존하고, 그 타입을 `@_exported import`로 다시 내보내요. 쓰는 쪽은 `import UIKitExtension` 하나로 `BottomSheetLayout`까지 써요.
+- `UIKitExtension`과 `SwiftUIExtension`은 `UIComponentsCore`에 의존하고, 그 타입을 `@_exported import`로 다시 내보내요. 쓰는 쪽은 `import UIKitExtension` 하나로 `BottomSheetLayout`까지 써요.
+- `UIKitComponents`는 지금 어떤 타깃에도 의존하지 않아요. 나중에 `CollectionViewAdapter`를 옮기면 그 타깃이 `UIKitComponents`에 의존해요.
 - `UIComponentsCore`는 UIKit·SwiftUI를 모르는 계산만 담아요. 두 UI 타깃이 같은 코드를 쓰게 되면 여기로 내려요. 그래서 macOS `swift test`와 CI에서도 검증돼요.
 - UI 타깃은 `Algorithm`, `SwiftExtension`에도 의존할 수 있어요. 코어 모듈이 UI 타깃에 의존하지 않아요.
 - `Labs`는 어떤 타깃도 의존하지 않아요. 실험이 끝나면 코드를 코어 모듈로 옮겨요.
@@ -91,7 +94,9 @@
 
 ## UI 타깃
 
-UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃으로 나눠 담아요. product도 각각 분리해서, SwiftUI만 쓰는 앱이 UIKit 쪽 코드를 링크하지 않게 해요. 둘이 함께 쓰는 계산은 `UIComponentsCore`에 두고 각 타깃이 다시 내보내요. 설계 규칙은 [UI 모듈 가이드](ui-modules.md)에 있어요.
+UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃으로 나눠 담아요. product도 각각 분리해서, SwiftUI만 쓰는 앱이 UIKit 쪽 코드를 링크하지 않게 해요. 둘이 함께 쓰는 계산은 `UIComponentsCore`에 두고 각 타깃이 다시 내보내요.
+
+`UIKitComponents`는 UIKit 뷰 하나를 UIKit과 SwiftUI 양쪽에서 쓰게 잇는 타깃이라 두 프레임워크를 함께 import해요. 설계 규칙은 [UI 모듈 가이드](ui-modules.md)에 있어요.
 
 ## 새 자료구조를 추가하는 흐름
 
@@ -119,5 +124,6 @@ UIKit·SwiftUI 재사용 뷰는 `UIKitExtension`, `SwiftUIExtension` 두 타깃�
 - [성능 기준](performance.md): 값 의미론, 할당, 측정 방법
 - [UI 모듈 가이드](ui-modules.md): UIKit·SwiftUI 타깃 설계 규칙
 - [바텀시트](../components/bottom-sheet.md): `UIKitExtension`의 첫 컴포넌트
+- [뷰 컴포넌트](../components/view-component.md): `UIKitComponents`의 `ViewComponent`
 - [Swift 스타일](../development/swiftstyle.md): 코드 작성 규칙
 - [테스트](../development/testing.md): 테스트 타깃과 실행 명령
