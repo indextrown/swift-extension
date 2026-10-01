@@ -137,6 +137,7 @@ override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexP
 
 - 셀이 재사용되면 UIKit이 새 설정을 넣어요. 이미 만든 뷰는 그대로 두고 `updateView(_:context:)`만 다시 불러요.
 - 상태가 바뀐 셀은 `reconfigureItems(_:)`로 다시 구성해요. 셀도 뷰도 새로 만들지 않고 높이만 다시 재요.
+- 셀에 넣은 설정은 새로 만들거나 `component`를 바꿨을 때만 갱신해요. 셀의 강조·선택 상태만 바뀌어 같은 설정이 다시 들어오면 갱신하지 않아요.
 - `UICollectionViewListCell`의 배경을 없애려면 `cell.backgroundConfiguration = .clear()`를 같이 넣어요.
 
 ## SwiftUI에 넣기
@@ -223,7 +224,7 @@ struct ThumbnailComponent: ViewComponent, Equatable {
 
 | 멤버 | 하는 일 |
 | --- | --- |
-| `task(priority:_:)` | 이번 수명 동안만 도는 비동기 작업을 시작해요. 수명이 끝나면 취소돼요 |
+| `task(priority:_:)` | 이번 수명 동안만 도는 비동기 작업을 시작해요. 수명이 끝나면 취소되고, 이미 끝난 수명에서는 시작하지 않아요 |
 | `onCancel(_:)` | 수명이 끝날 때 실행할 정리 동작을 등록해요. 이미 끝났으면 바로 실행해요 |
 | `invalidateLayout()` | 크기를 다시 재 달라고 호스트에 요청해요. 끝난 수명에서는 아무 일도 안 해요 |
 
@@ -235,11 +236,11 @@ struct ThumbnailComponent: ViewComponent, Equatable {
 | 셀 | 취소 (재사용으로 새 설정이 들어올 때) | 취소하지 않아요. 셀은 화면 밖으로 스크롤돼도 window에서 빠지지 않아요 | — | 취소 |
 | `ComponentView` | 취소 | `dismantleUIView`에서 취소 | SwiftUI가 새 뷰를 만들어요 | 취소 |
 
-- `ComponentHostView`가 window에서 빠져 있는 동안 `update(_:)`를 부르면, 이미 취소된 context로 갱신해요. 뷰의 값은 바뀌지만 `task(priority:_:)`로 시작한 작업은 바로 취소되고, `onCancel(_:)`에 등록한 동작은 바로 실행돼요. 다시 붙으면 새 수명으로 한 번 더 갱신해요.
+- `ComponentHostView`가 window에서 빠져 있는 동안 `update(_:)`를 부르면, 이미 취소된 context로 갱신해요. 뷰의 값은 바뀌지만 `task(priority:_:)`는 작업을 시작하지 않고, `onCancel(_:)`에 등록한 동작은 바로 실행돼요. 다시 붙으면 새 수명으로 한 번 더 갱신해요.
 - 창에 붙은 적 없는 호스트 뷰나 셀이 해제되면 다음 갱신이 오지 않아요. 그래서 호스트가 해제될 때 마지막 갱신의 작업을 취소해요.
 
 - SwiftUI는 뷰를 만든 직후 `updateUIView`를 한 번 더 불러요. 그래서 `Equatable`이 아닌 컴포넌트는 처음 나타날 때 두 번 갱신돼요. `Equatable` 컴포넌트는 두 번째 갱신을 건너뛰어요.
-- 셀은 상태(강조·선택)가 바뀔 때도 설정이 다시 들어와요. 이 경우에도 `Equatable`이면 갱신을 건너뛰어요.
+- 셀은 강조·선택 상태가 바뀔 때도 `updated(for:)`로 만든 같은 설정이 다시 들어와요. 이때는 컴포넌트가 `Equatable`이든 아니든 갱신하지 않아요. 그래서 상태가 바뀔 때마다 작업이 취소됐다가 다시 시작되지 않아요.
 
 ## 성능
 

@@ -170,6 +170,53 @@ private func alternatingTexts(count: Int, flipped: Bool = false) -> [String] {
 }
 
 @MainActor
+@Test func cellStateChangeDoesNotUpdateNonEquatableComponent() {
+    var updates = 0
+    let configuration = ClosureComponent(text: shortText) { updates += 1 }.contentConfiguration()
+    let contentView = configuration.makeContentView()
+    #expect(updates == 1)
+
+    /// 셀의 강조·선택 상태가 바뀌면 UIKit은 `updated(for:)`로 만든 같은 설정을 다시 넣어요.
+    contentView.configuration = configuration.updated(for: UICellConfigurationState(traitCollection: UITraitCollection()))
+    #expect(updates == 1)
+
+    /// 새로 만든 설정은 값이 같아도 갱신해요. 클로저를 담은 컴포넌트는 비교할 수 없기 때문이에요.
+    contentView.configuration = ClosureComponent(text: shortText) { updates += 1 }.contentConfiguration()
+    #expect(updates == 2)
+}
+
+@MainActor
+@Test func changingConfigurationComponentUpdatesAgain() {
+    var updates = 0
+    var configuration = ClosureComponent(text: shortText) { updates += 1 }.contentConfiguration()
+    let contentView = configuration.makeContentView()
+
+    configuration.component = ClosureComponent(text: longText) { updates += 1 }
+    contentView.configuration = configuration
+
+    #expect(updates == 2)
+}
+
+@MainActor
+@Test func highlightingListCellDoesNotUpdateComponent() {
+    var updates = 0
+    let cell = UICollectionViewListCell(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+    cell.contentConfiguration = ClosureComponent(text: shortText) { updates += 1 }.contentConfiguration()
+    cell.layoutIfNeeded()
+    let updatesAfterSetup = updates
+
+    cell.isHighlighted = true
+    cell.layoutIfNeeded()
+    cell.isSelected = true
+    cell.layoutIfNeeded()
+    cell.isHighlighted = false
+    cell.layoutIfNeeded()
+
+    #expect(updatesAfterSetup == 1)
+    #expect(updates == updatesAfterSetup)
+}
+
+@MainActor
 @Test func releasedContentViewCancelsWork() {
     let cancellations = Counter()
 

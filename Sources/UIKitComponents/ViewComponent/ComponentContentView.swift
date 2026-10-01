@@ -26,7 +26,12 @@ final class ComponentContentView<Component: ViewComponent>: UIView, UIContentVie
                 return
             }
 
+            let isSameConfiguration = configuration.revision === self.currentConfiguration.revision
             self.currentConfiguration = configuration
+
+            /// 셀 상태만 바뀌어 `updated(for:)`로 같은 설정이 다시 들어온 경우입니다. 갱신하지 않습니다.
+            guard !isSameConfiguration else { return }
+
             self.host.update(configuration.component)
         }
     }

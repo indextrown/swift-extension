@@ -48,6 +48,20 @@ import Testing
 }
 
 @MainActor
+@Test func taskDoesNotStartOnCancelledContext() async {
+    let context = ComponentContext()
+    context.cancel()
+    var didRun = false
+
+    context.task { didRun = true }
+    for _ in 0..<10 {
+        await Task.yield()
+    }
+
+    #expect(!didRun)
+}
+
+@MainActor
 @Test func taskIsCancelledWithContext() async {
     let context = ComponentContext()
 

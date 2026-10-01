@@ -27,7 +27,18 @@ public struct ComponentConfiguration<Component: ViewComponent>: UIContentConfigu
     // MARK: - Property
 
     /// 셀에 표시할 컴포넌트입니다.
-    public var component: Component
+    ///
+    /// 바꾸면 새 설정으로 취급되어, 셀에 다시 넣을 때 갱신합니다.
+    public var component: Component {
+        didSet {
+            self.revision = ComponentConfigurationRevision()
+        }
+    }
+
+    /// 설정을 만들거나 `component`를 바꾼 시점을 구별합니다.
+    ///
+    /// `updated(for:)`는 같은 값을 돌려주므로, content view는 이 값으로 셀 상태만 바뀐 설정을 알아봅니다.
+    private(set) var revision = ComponentConfigurationRevision()
 
 
 
@@ -55,6 +66,9 @@ public struct ComponentConfiguration<Component: ViewComponent>: UIContentConfigu
 
     /// 셀 상태가 바뀌어도 같은 설정을 돌려줍니다.
     ///
+    /// 셀의 강조·선택 상태가 바뀌면 UIKit이 이 메서드로 만든 설정을 다시 넣습니다. content view는 같은 설정이면
+    /// 갱신하지 않으므로, 상태가 바뀔 때마다 컴포넌트의 작업이 취소됐다가 다시 시작되지 않습니다.
+    ///
     /// - Parameter state: 셀의 선택·강조 같은 상태입니다. 지금은 쓰지 않습니다.
     /// - Returns: 이 설정 그대로입니다.
     /// - Complexity: O(1)입니다.
@@ -62,4 +76,11 @@ public struct ComponentConfiguration<Component: ViewComponent>: UIContentConfigu
         return self
     }
 }
+
+
+
+// MARK: - Revision
+
+/// `ComponentConfiguration`이 만들어진 시점을 구별하는 표식입니다. 객체 동일성(`===`)으로만 비교합니다.
+final class ComponentConfigurationRevision {}
 #endif

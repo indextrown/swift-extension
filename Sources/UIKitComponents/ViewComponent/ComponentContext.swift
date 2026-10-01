@@ -71,7 +71,7 @@ public final class ComponentContext {
     /// 이번 수명 동안만 실행되는 비동기 작업을 시작합니다.
     ///
     /// context가 취소되면 작업도 취소됩니다. 작업 안에서 `Task.isCancelled`나
-    /// `Task.checkCancellation()`으로 취소를 확인합니다.
+    /// `Task.checkCancellation()`으로 취소를 확인합니다. 이미 취소된 context에서 부르면 작업을 시작하지 않습니다.
     ///
     /// - Parameters:
     ///   - priority: 작업의 우선순위입니다. `nil`이면 현재 작업의 우선순위를 따릅니다.
@@ -81,6 +81,8 @@ public final class ComponentContext {
         priority: TaskPriority? = nil,
         _ operation: @escaping @MainActor () async -> Void
     ) {
+        guard !self.isCancelled else { return }
+
         let task = Task(priority: priority) { @MainActor in
             await operation()
         }
