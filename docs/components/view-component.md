@@ -113,7 +113,7 @@ notice.update(NoticeComponent(title: "점검이 끝났어요", message: "다시 
 | `update(_:)` | 같은 뷰에 새 상태를 반영해요. `Equatable`이고 값이 같으면 건너뛰어요 |
 | `component` | 마지막으로 반영한 컴포넌트 |
 | `hostedView` | 컴포넌트가 만든 뷰. 애니메이션처럼 뷰를 직접 다뤄야 할 때 써요 |
-| `sizeThatFits(_:)` | 프레임으로 배치할 때 주어진 너비에서 필요한 크기를 돌려줘요 |
+| `sizeThatFits(_:)` | 프레임으로 배치할 때 주어진 너비에서 필요한 크기를 돌려줘요. 컴포넌트가 `invalidateLayout()`을 불러도 부모가 이 메서드를 다시 불러야 크기가 바뀌어요 |
 
 콘텐츠 허깅·압축 저항 우선순위는 기본값을 그대로 둬요. 그래서 높이가 고정된 스택뷰(`distribution = .fill`)에서도 제약이 충돌하지 않아요.
 
@@ -226,7 +226,7 @@ struct ThumbnailComponent: ViewComponent, Equatable {
 | --- | --- |
 | `task(priority:_:)` | 이번 수명 동안만 도는 비동기 작업을 시작해요. 수명이 끝나면 취소되고, 이미 끝난 수명에서는 시작하지 않아요 |
 | `onCancel(_:)` | 수명이 끝날 때 실행할 정리 동작을 등록해요. 이미 끝났으면 바로 실행해요 |
-| `invalidateLayout()` | 크기를 다시 재 달라고 호스트에 요청해요. 끝난 수명에서는 아무 일도 안 해요 |
+| `invalidateLayout()` | 크기를 다시 재 달라고 호스트에 요청해요. 셀과 SwiftUI는 다시 재요. `ComponentHostView`는 Auto Layout으로 붙였으면 제약을 따라 다시 잡히고, 프레임으로 배치했으면 부모가 `sizeThatFits(_:)`를 다시 불러야 해요. 끝난 수명에서는 아무 일도 안 해요 |
 
 수명이 끝나는 시점은 호스트마다 조금 달라요.
 
@@ -294,6 +294,7 @@ xcodebuild test \
 | iOS 15 실기기·시뮬레이터 | 너비 기반 `intrinsicContentSize` 방식은 iOS 18.3·27에서만 확인했어요. `확인 필요`: iOS 15 런타임에서 `UIKitComponentsTests` 실행 | iOS 15 런타임을 구하면 실행해서 결과를 이 표에 적기 |
 | 가로 `ScrollView` | 제안 너비가 없으면 뷰의 자연 크기를 돌려줘요. 측정하지 않았어요 | 가로 캐러셀 데모와 테스트 추가 |
 | iOS 15 셀의 비동기 크기 변경 | `selfSizingInvalidation`은 iOS 16부터라서, iOS 15에서는 셀을 다시 구성해야 할 수 있어요 | iOS 15에서 확인 |
+| 프레임으로 배치한 `ComponentHostView`의 `invalidateLayout()` | 호스트 자신만 다시 배치해요. 부모는 알 수 없어서 `sizeThatFits(_:)`를 다시 부르지 않아요 | 필요해지면 크기 변경을 알리는 콜백 추가 |
 | 화면 밖 셀의 작업 | 셀이 재사용되거나 해제될 때 취소돼요. 화면 밖으로 스크롤된 것만으로는 취소되지 않아요 | 어댑터 타깃에서 `didEndDisplaying`에 연결 |
 | 상호작용 | 이벤트는 클로저로 받아요 | `onTap`·`pressedEffect`·`onLongPress` 같은 modifier. 모든 modifier가 조건부로 `View`를 따르게 해요 |
 | 섹션 선언형 목록 | 데이터 소스는 쓰는 쪽이 만들어요 | `CollectionViewAdapter`를 이 타깃에 의존하는 별도 타깃으로 |
