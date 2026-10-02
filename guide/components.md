@@ -31,7 +31,7 @@
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/indextrown/swift-extension.git", from: "0.1.0")
+    .package(url: "https://github.com/indextrown/swift-extension.git", branch: "main")
 ],
 targets: [
     .target(
@@ -44,7 +44,9 @@ targets: [
 ]
 ```
 
-Xcode에서는 **File → Add Package Dependencies…** 에서 저장소 주소를 넣고 필요한 product를 골라요.
+아직 태그된 릴리즈가 없어서 `main` 브랜치를 가리켜요. 첫 릴리즈가 나오면 `from: "0.1.0"`처럼 버전으로 바꿔요.
+
+Xcode에서는 **File → Add Package Dependencies…** 에서 저장소 주소를 넣고, Dependency Rule을 `Branch`·`main`으로 골라요. 그다음 필요한 product를 골라요.
 
 ## 바텀시트
 

@@ -39,9 +39,13 @@ it in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/indextrown/swift-extension.git", from: "0.1.0")
+    .package(url: "https://github.com/indextrown/swift-extension.git", branch: "main")
 ]
 ```
+
+> No release has been tagged yet, so depend on the `main` branch for now.
+> After the first release, switch to a version requirement such as
+> `from: "0.1.0"`.
 
 Then add the products you need to your target:
 
