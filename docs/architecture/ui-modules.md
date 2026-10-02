@@ -113,8 +113,9 @@ public struct BadgeStyle {
 1. 어느 타깃에 넣을지 정해요. UIKit 뷰는 `UIKitExtension`, SwiftUI 뷰는 `SwiftUIExtension`이에요. 둘 다 필요하면 각각 구현하고 공통 계산 로직만 코어 모듈로 내려요. UIKit 뷰 하나를 SwiftUI에서도 그대로 쓰면 되는 컴포넌트는 `ViewComponent`로 만들어요. [뷰 컴포넌트](../components/view-component.md)를 참고해요.
 2. `Sources/<타깃>/<컴포넌트>/` 디렉터리를 만들고 타입 하나당 파일 하나로 나눠요.
 3. UIKit 코드는 `#if canImport(UIKit) && !os(watchOS)`로 감싸요.
-4. 코어 모듈의 타입이 필요하면 `Package.swift`의 해당 타깃 `dependencies`에 추가해요. 지금은 두 UI 타깃 모두 의존성이 없어요.
+4. 코어 모듈의 타입이 필요하면 `Package.swift`의 해당 타깃 `dependencies`에 추가해요. 지금은 `UIKitExtension`·`SwiftUIExtension`이 `UIComponentsCore`에 의존하고, `UIKitComponents`는 의존성이 없어요.
 5. 대응하는 테스트 타깃에 테스트를 추가해요.
+6. 앱에서 쓰는 방법을 [컴포넌트 사용법](../../guide/components.md)에 추가해요. 자세한 설계와 검증 방법은 `docs/components/`에 두고, 가이드에서는 링크로 이어요.
 
 새 타깃 자체를 더 만들 일이 생기면 `Package.swift`에 product·target·testTarget 세 곳을 함께 추가하고, [패키지 구조](architecture.md)의 타깃 표와 `README.md`의 모듈 목록도 갱신해요.
 

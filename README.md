@@ -39,9 +39,13 @@ it in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/indextrown/swift-extension.git", from: "0.1.0")
+    .package(url: "https://github.com/indextrown/swift-extension.git", branch: "main")
 ]
 ```
+
+> No release has been tagged yet, so depend on the `main` branch for now.
+> After the first release, switch to a version requirement such as
+> `from: "0.1.0"`.
 
 Then add the products you need to your target:
 
@@ -78,6 +82,12 @@ import SwiftExtension
 print(SwiftExtension.version)
 ```
 
+### UI components
+
+How to use the bottom sheet and `ViewComponent` in an app is in the
+[컴포넌트 사용법](guide/components.md) guide (Korean). It covers which product
+to add, UIKit and SwiftUI examples, and links to the detailed component docs.
+
 ## Development
 
 ```bash
@@ -103,12 +113,14 @@ Sources/
 Tests/                 one test target per product
 Demo/                  sample apps: AlgorithmDemo (macOS), SwiftExtensionDemo (iOS)
 docs/                  architecture and development guides (Korean)
+guide/                 component usage guide (Korean)
 ```
 
 ## Documentation
 
 Development guides are written in Korean.
 
+- [컴포넌트 사용법](guide/components.md) — how to add and use the UI components in an app
 - [패키지 구조](docs/architecture/architecture.md) — targets, module boundaries, dependency direction
 - [API 설계 규칙](docs/architecture/api-design.md) — public API naming, access control, compatibility
 - [성능 기준](docs/architecture/performance.md) — value semantics, allocation, measurement
