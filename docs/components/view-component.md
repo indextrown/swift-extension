@@ -210,7 +210,8 @@ struct ThumbnailComponent: ViewComponent, Equatable {
         context.task {
             guard
                 let data = try? await URLSession.shared.data(from: self.url).0,
-                let image = UIImage(data: data)
+                let image = UIImage(data: data),
+                !Task.isCancelled
             else {
                 return
             }
@@ -221,6 +222,8 @@ struct ThumbnailComponent: ViewComponent, Equatable {
     }
 }
 ```
+
+`await`에서 돌아온 뒤에는 `Task.isCancelled`를 확인하고 값을 넣어요. 취소는 이미 끝난 요청을 되돌리지 못해서, 확인하지 않으면 그사이 재사용된 셀에 이전 항목의 이미지가 들어갈 수 있어요.
 
 | 멤버 | 하는 일 |
 | --- | --- |

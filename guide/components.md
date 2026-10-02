@@ -99,6 +99,8 @@ import SwiftUIExtension
 
 struct MapScreen: View {
 
+    let places: [Place]
+
     @State private var detent: BottomSheetDetent.Identifier = .tip
 
     var body: some View {
@@ -266,7 +268,8 @@ struct ThumbnailComponent: ViewComponent, Equatable {
         context.task {
             guard
                 let data = try? await URLSession.shared.data(from: self.url).0,
-                let image = UIImage(data: data)
+                let image = UIImage(data: data),
+                !Task.isCancelled
             else {
                 return
             }
@@ -277,6 +280,8 @@ struct ThumbnailComponent: ViewComponent, Equatable {
     }
 }
 ```
+
+`await`에서 돌아온 뒤에는 `Task.isCancelled`를 확인하고 값을 넣어요. 취소는 이미 끝난 요청을 되돌리지 못해요. 확인하지 않으면 그사이 재사용된 셀에 이전 항목의 이미지가 들어갈 수 있어요.
 
 작업이 끝날 때 정리할 것이 있으면 `context.onCancel { ... }`에 등록해요.
 
