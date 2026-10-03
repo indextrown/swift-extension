@@ -25,7 +25,7 @@
 | Product | 컴포넌트 | 넣는 곳 | 최소 버전 |
 | --- | --- | --- | --- |
 | `UIKitExtension` | `BottomSheetController` | UIKit 화면 | iOS 15 |
-| `SwiftUIExtension` | `bottomSheet(detent:)`, `BottomSheetScrollView` | SwiftUI 화면 | iOS 17 |
+| `SwiftUIExtension` | `bottomSheet(detent:)` | SwiftUI 화면 | iOS 17 |
 | `UIKitComponents` | `ViewComponent`, `ComponentHostView`, `contentConfiguration()`, `ComponentView` | UIKit 뷰·스택뷰·셀, SwiftUI | iOS 15 |
 
 ```swift
@@ -94,27 +94,28 @@ final class MapViewController: UIViewController {
 
 ### SwiftUI에서 쓰기
 
-부모 View에 `bottomSheet(detent:)` 수정자를 붙여요. 스크롤이 필요한 콘텐츠는 `ScrollView` 대신 `BottomSheetScrollView`를 써요. 그래야 목록 맨 위에서 아래로 끌 때 시트가 내려와요.
+부모 View에 `bottomSheet(detent:)` 수정자를 붙이고, 시트에 넣을 내용을 클로저로 넘겨요. 아래 예시처럼 높이가 정해진 내용을 넣어요. 시트 안에서 목록을 스크롤하는 방법은 [바텀시트 문서](../docs/components/bottom-sheet.md#swiftui에서-쓰기)에 있어요.
 
 ```swift
 import SwiftUIExtension
 
 struct MapScreen: View {
 
-    let places: [Place]
+    let place: Place
 
     @State private var detent: BottomSheetDetent.Identifier = .tip
 
     var body: some View {
         MapView()
             .bottomSheet(detent: self.$detent, layout: .standard) {
-                BottomSheetScrollView {
-                    LazyVStack {
-                        ForEach(self.places) { place in
-                            PlaceRow(place: place)
-                        }
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(self.place.name)
+                        .font(.headline)
+                    Text(self.place.address)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
+                .padding(16)
             }
     }
 }
