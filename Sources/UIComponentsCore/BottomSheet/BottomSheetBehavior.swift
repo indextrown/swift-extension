@@ -42,7 +42,22 @@ public struct BottomSheetBehavior: Hashable, Sendable {
     /// 기본 동작(`prefersScrollingExpandsWhenScrolledToEdge`)이에요. `false`면 스크롤뷰를 위로 끌 때는
     /// 시트가 어느 단계에 있든 스크롤이 움직이고, 시트는 손잡이나 스크롤뷰 밖을 끌어야 올라갑니다.
     /// 어느 쪽이든 스크롤이 맨 위에 닿은 채로 아래로 끌면 시트가 내려옵니다.
+    ///
+    /// `dragArea`가 `.entireSheet`일 때, 따라가는 스크롤뷰에서 시작한 끌기에만 쓰입니다. `.handleAndBackground`이면
+    /// 콘텐츠에서 시작한 끌기를 시트가 받지 않으므로 이 값과 상관없이 스크롤뷰는 스크롤만 하고, 맨 위에서 아래로 끌어도
+    /// 시트가 내려오지 않습니다. 손잡이 줄, 빈 배경, 끌기 손잡이로 지정한 View는 이 값과 상관없이 언제나 시트를 움직입니다.
     public var scrollingExpandsSheet: Bool
+
+    /// 손가락으로 끌어 시트를 옮길 수 있는 영역입니다. 기본값은 `.entireSheet`입니다.
+    ///
+    /// `scrollingExpandsSheet`보다 먼저 적용됩니다. 이 값이 어떤 끌기가 시트에 닿을지 거르고,
+    /// `scrollingExpandsSheet`는 닿은 끌기 가운데 따라가는 스크롤뷰 위에서 시작한 끌기만 시트와 스크롤에
+    /// 나눕니다. VoiceOver의 손잡이 단계 조절, 뒷판 탭, 코드로 단계를 바꾸는 동작은 이 값과 상관없습니다.
+    ///
+    /// 끄는 도중에 바꾸면 UIKit은 진행 중인 끌기를 시작할 때의 판단대로 마치고 다음 끌기부터 새 값을 따릅니다.
+    /// SwiftUI는 새 값이 진행 중인 끌기의 출발지를 받지 않을 때만 그 끌기를 끝내고 지금 위치에서 가장 가까운 단계로
+    /// 옮깁니다. 손잡이 줄, 빈 배경, 지정한 View에서 시작한 끌기는 이어 갑니다.
+    public var dragArea: BottomSheetDragArea
 
     /// 움직임 값을 주입받습니다. 인자를 생략하면 기본값을 씁니다.
     public init(
@@ -51,7 +66,8 @@ public struct BottomSheetBehavior: Hashable, Sendable {
         animationDuration: TimeInterval = 0.4,
         overDragLimit: CGFloat = 64,
         animatesInitialAppearance: Bool = true,
-        scrollingExpandsSheet: Bool = true
+        scrollingExpandsSheet: Bool = true,
+        dragArea: BottomSheetDragArea = .entireSheet
     ) {
         self.decelerationRate = decelerationRate
         self.springDampingRatio = springDampingRatio
@@ -59,6 +75,7 @@ public struct BottomSheetBehavior: Hashable, Sendable {
         self.overDragLimit = overDragLimit
         self.animatesInitialAppearance = animatesInitialAppearance
         self.scrollingExpandsSheet = scrollingExpandsSheet
+        self.dragArea = dragArea
     }
 
     /// 지도 위 시트에 맞춘 기본 움직임입니다.

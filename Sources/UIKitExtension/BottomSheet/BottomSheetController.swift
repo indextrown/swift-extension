@@ -22,6 +22,10 @@ import UIKit
 /// 움직이고 다 올라간 뒤에야 스크롤이 시작됩니다. 스크롤이 시트를 올리지 않게 하려면
 /// `BottomSheetBehavior.scrollingExpandsSheet`를 `false`로 둡니다.
 ///
+/// 콘텐츠에 `UITableView`나 스크롤뷰가 여러 개라 스크롤할 때 시트가 끌리면 안 되면
+/// `behavior.dragArea`를 `.handleAndBackground`로 둡니다. 손잡이 줄과 콘텐츠의 빈 배경으로만 시트가 움직이고
+/// 콘텐츠는 스크롤만 합니다. 탭 제스처가 달린 제목줄처럼 그 자체가 터치를 받는 View도 끌리게 하려면 그 View의 `isBottomSheetDragHandle`을 켭니다.
+///
 /// ```swift
 /// let sheet = BottomSheetController(contentViewController: listViewController)
 /// sheet.add(to: self)
@@ -33,6 +37,11 @@ public final class BottomSheetController: UIViewController {
     // MARK: - Property
 
     /// 시트 안에 표시하는 화면입니다.
+    ///
+    /// `contentMode`가 `.static`이면 시트가 이 화면의 `additionalSafeAreaInsets.bottom`에, 시트 바닥이 부모 View 바닥
+    /// 아래로 나간 길이를 더해 안전 영역 바닥을 탭바·홈 인디케이터 윗선에 맞춥니다. 처음 더하기 전의 값은 앱의 값으로 두고
+    /// 그 위에 더하며 `remove()`하면 되돌립니다. 붙어 있는 동안 앱이 이 값을 바꾸면 시트가 다음에 맞출 때 덮어씁니다.
+    /// `.fitToBounds`에서는 이 값을 바꾸지 않습니다.
     public let contentViewController: UIViewController
 
     /// 시트가 멈출 단계의 목록입니다. 바꾸면 같은 이름의 단계로 자리를 다시 잡습니다.
@@ -45,8 +54,12 @@ public final class BottomSheetController: UIViewController {
 
     /// 시트가 손을 따라오고 단계 사이를 옮기는 방식입니다.
     ///
-    /// 값을 바꾸면 다음 끌기부터 적용됩니다.
-    public var behavior: BottomSheetBehavior
+    /// 값을 바꾸면 다음 끌기부터 적용됩니다. 진행 중인 끌기는 시작할 때의 값으로 시트와 스크롤 사이를 판단합니다.
+    /// 끌지 않을 때 스크롤을 붙잡을지는 다음 스크롤 위치 변화부터 새 값을 따릅니다. 멈춰 있을 때 바꾸면 `static`
+    /// 콘텐츠의 아래쪽 안전 영역도 새 값에 맞춥니다.
+    public var behavior: BottomSheetBehavior {
+        didSet { self.refreshContentBottomInsetIfResting() }
+    }
 
     /// 시트가 움직일 때 콘텐츠 높이를 다루는 방식입니다.
     public let contentMode: BottomSheetContentMode
@@ -62,7 +75,8 @@ public final class BottomSheetController: UIViewController {
     /// 지금 멈출 수 있는 단계의 이름입니다. `nil`이면 레이아웃의 모든 단계입니다.
     ///
     /// 내용이 많아 낮은 단계에 넣을 수 없을 때 그 단계를 빼 둡니다. 현재 단계가
-    /// 목록에서 빠지면 가장 가까운 허용 단계로 옮겨 갑니다.
+    /// 목록에서 빠지면 가장 가까운 허용 단계로 옮겨 갑니다. 멈춰 있을 때 바꾸면 `static`
+    /// 콘텐츠의 아래쪽 안전 영역도 새 값에 맞춥니다.
     public var allowedDetents: Set<BottomSheetDetent.Identifier>? {
         didSet { self.applyAllowedDetents() }
     }
@@ -119,6 +133,19 @@ public final class BottomSheetController: UIViewController {
     /// 지금 손가락이 시트를 움직이는지, 콘텐츠를 스크롤하는지 나타냅니다.
     private var dragMode: DragMode = .sheet
 
+    /// 끌기가 처음 닿은 자리입니다. 손가락이 닿는 순간 `gestureRecognizer(_:shouldReceive:)`에서 정하고
+    /// 끌기가 끝날 때까지 씁니다.
+    private var dragOrigin: BottomSheetDragOrigin = .content
+
+    /// `dragOrigin`을 마지막으로 기록한 터치의 시각입니다. 같은 순간에 닿은 손가락을 구분하는 데 씁니다.
+    private var dragOriginTimestamp: TimeInterval = -1
+
+    /// 진행 중인 끌기가 시작될 때의 움직임 값입니다.
+    ///
+    /// 끄는 도중에 `behavior`가 바뀌어도 시트와 스크롤 사이의 판단(넘김, 스크롤 붙잡기)은 이 값으로 끝까지 합니다.
+    /// 스크롤뷰의 팬이 이미 함께 인식되고 있어, 도중에 판단이 바뀌면 시트와 목록이 함께 움직입니다.
+    private var dragRouting: BottomSheetBehavior = .default
+
     /// 진행 중인 단계 이동 애니메이션입니다.
     private var animator: UIViewPropertyAnimator?
 
@@ -129,12 +156,41 @@ public final class BottomSheetController: UIViewController {
     private var contentSizeObservation: NSKeyValueObservation?
     private var scrollIndicatorWasVisible = true
 
+    /// 시트가 세로 스크롤 인디케이터를 숨겨 두었는지입니다. 숨긴 적이 있을 때만 원래 값으로 되돌립니다.
+    private var isScrollIndicatorHiddenBySheet = false
+
     /// `.content` 단계를 위해 잰 콘텐츠 높이입니다. 손잡이는 포함하지 않습니다. 아직 재지 않았으면 `nil`입니다.
     private var measuredContentHeight: CGFloat?
+
+    /// 시트가 콘텐츠 화면의 `additionalSafeAreaInsets.bottom`에 더해 둔 몫입니다. `fitToBounds`에서는 언제나 0입니다.
+    private var appliedContentBottomInset: CGFloat = 0
+
+    /// 시트가 처음 몫을 더하기 전 콘텐츠 화면의 `additionalSafeAreaInsets.bottom`입니다. `remove()`에서 되돌립니다.
+    private var contentBottomInsetBase: CGFloat?
+
+    /// 진행 중인 단계 이동이 콘텐츠 아래 여백도 함께 옮기는 구간입니다. 도중에 멈출 때 그려진 위치의 값을 구합니다.
+    private var contentInsetTransition: ContentInsetTransition?
 
     private enum DragMode {
         case sheet
         case scroll
+    }
+
+    /// 단계 이동 애니메이션이 콘텐츠 아래 여백을 옮기는 구간입니다.
+    private struct ContentInsetTransition {
+        let fromOffset: CGFloat
+        let toOffset: CGFloat
+        let fromInset: CGFloat
+        let toInset: CGFloat
+
+        /// 시트와 콘텐츠 배치는 같은 곡선으로 움직이므로, 시트가 지난 비율만큼 여백도 옮겨 갔습니다.
+        func inset(at offset: CGFloat) -> CGFloat {
+            guard self.toOffset != self.fromOffset else { return self.toInset }
+
+            let progress = (offset - self.fromOffset) / (self.toOffset - self.fromOffset)
+
+            return max(self.fromInset + (self.toInset - self.fromInset) * progress, 0)
+        }
     }
 
 
@@ -263,6 +319,7 @@ public final class BottomSheetController: UIViewController {
 
         self.stopAnimation()
         self.track(scrollView: nil)
+        self.removeContentBottomInset()
 
         self.willMove(toParent: nil)
         self.backdropView?.removeFromSuperview()
@@ -299,7 +356,13 @@ public final class BottomSheetController: UIViewController {
             self.updateDetent(detent)
             let target = self.offset(for: detent)
             self.setOffset(target)
+            let insetChanged = self.applyContentBottomInset(restingAt: target)
             self.hostView?.layoutIfNeeded()
+
+            if insetChanged {
+                self.clampTrackedScrollToEnd()
+            }
+
             self.notifyCoveredHeight(offset: target, animated: false)
             return
         }
@@ -323,6 +386,8 @@ public final class BottomSheetController: UIViewController {
     /// 시트가 가장 높은 단계에 있지 않으면 스크롤 대신 시트가 움직이고, 가장 높은 단계에서
     /// 스크롤이 맨 위에 닿은 채로 아래로 끌면 다시 시트가 움직입니다. `behavior.scrollingExpandsSheet`가
     /// `false`면 위로 끌 때는 언제나 스크롤이 움직이고, 맨 위에서 아래로 끌 때만 시트로 넘어옵니다.
+    /// `behavior.dragArea`가 `.handleAndBackground`이면 스크롤뷰는 시트와 묶이지 않고 `.content` 단계의 높이를 재는 데만
+    /// 쓰입니다.
     /// `nil`을 넘기면 따라가기를 멈춥니다.
     ///
     /// - Parameter scrollView: 콘텐츠 화면 안의 세로 스크롤뷰입니다.
@@ -441,42 +506,6 @@ public final class BottomSheetController: UIViewController {
         heightConstraint.constant = height
     }
 
-    /// `static` 모드에서 콘텐츠의 안전 영역 바닥을 탭바 윗선에 맞춥니다.
-    ///
-    /// 시트 바닥은 부모 안전 영역 바닥보다 `bottomInset + overDragLimit`만큼 아래에 있습니다.
-    /// 그 구간은 탭바에 가리거나 화면 밖이라 콘텐츠가 피해야 합니다. UIKit은 창의 안전 영역
-    /// 기준으로만 인셋을 계산하므로, 불투명 탭바처럼 부모 View가 이미 줄어든 경우 탭바 구간을 모릅니다.
-    /// 필요한 값에서 UIKit이 이미 넣어 준 값을 빼고 나머지를 `additionalSafeAreaInsets`로 보탭니다.
-    private func updateContentSafeAreaIfNeeded() {
-        let additional: CGFloat
-
-        switch self.contentMode {
-        case .fitToBounds:
-            additional = 0
-
-        case .static:
-            guard let host = self.hostView, self.availableHeight > 0 else { return }
-
-            let desired = self.bottomInset + self.behavior.overDragLimit
-            var inherited: CGFloat = 0
-
-            if let window = host.window {
-                let sheetBottom = host.convert(
-                    CGPoint(x: 0, y: host.bounds.maxY + self.behavior.overDragLimit),
-                    to: window
-                ).y
-                let windowSafeBottom = window.bounds.maxY - window.safeAreaInsets.bottom
-                inherited = max(sheetBottom - windowSafeBottom, 0)
-            }
-
-            additional = max(desired - inherited, 0)
-        }
-
-        guard self.contentViewController.additionalSafeAreaInsets.bottom != additional else { return }
-
-        self.contentViewController.additionalSafeAreaInsets.bottom = additional
-    }
-
     private func installHostLayoutObserver(in host: UIView) {
         let observer = BottomSheetHostLayoutObserverView()
         observer.isHidden = true
@@ -518,8 +547,8 @@ public final class BottomSheetController: UIViewController {
     }
 
     private func setGesture() {
-        /// 시트 전체에서 끌 수 있게 합니다. 따라가는 스크롤뷰와는 동시에 인식해 손가락 하나로
-        /// 시트와 스크롤을 이어서 움직입니다.
+        /// 시트 전체에서 끌 수 있게 합니다(`behavior.dragArea`가 `.handleAndBackground`이면 손잡이 줄·빈 배경·끌기 손잡이에서만).
+        /// 따라가는 스크롤뷰와는 동시에 인식해 손가락 하나로 시트와 스크롤을 이어서 움직입니다.
         self.panGesture.delegate = self
         self.view.addGestureRecognizer(self.panGesture)
     }
@@ -555,15 +584,21 @@ public final class BottomSheetController: UIViewController {
     private func layoutIfPossible() {
         guard self.view.window != nil, self.topConstraint != nil, self.availableHeight > 0 else { return }
 
-        self.measureContentIfNeeded()
         self.updateStaticHeightIfNeeded()
-        self.updateContentSafeAreaIfNeeded()
+
+        /// 처음 자리를 잡기 전에 아래 여백부터 넣어, `.content` 단계를 처음 잴 때도 이후와 같은 안전 영역으로 잽니다.
+        if self.hasEnteredScreen == false {
+            self.applyContentBottomInset(restingAt: self.offset(for: self.currentDetent))
+        }
+
+        self.measureContentIfNeeded()
 
         guard self.hasEnteredScreen else {
             return self.enterScreen()
         }
 
         self.applyCurrentDetentIfNeeded()
+        self.refreshContentBottomInsetIfResting()
     }
 
     /// 처음 배치할 때 화면 아래에서 올라오게 합니다.
@@ -577,6 +612,7 @@ public final class BottomSheetController: UIViewController {
 
         let target = self.offset(for: self.currentDetent)
         self.topConstraint?.constant = target
+        self.applyContentBottomInset(restingAt: target)
         self.hostView?.layoutIfNeeded()
         self.surfaceView.setShadowVisible(self.currentDetent.anchor != .hidden)
         self.notifyCoveredHeight(offset: target, animated: false)
@@ -622,7 +658,10 @@ public final class BottomSheetController: UIViewController {
     private func applyAllowedDetents() {
         let candidates = self.resolvedLayout.detents(among: self.allowedDetents)
 
-        guard candidates.contains(self.currentDetent) == false else { return }
+        guard candidates.contains(self.currentDetent) == false else {
+            /// 머무는 단계는 그대로여도 허용된 가장 높은 단계가 바뀌면 이 단계에서 콘텐츠가 스크롤하는지가 바뀝니다.
+            return self.refreshContentBottomInsetIfResting()
+        }
 
         let target = self.resolvedLayout.nearestDetent(
             to: self.resolvedLayout.offset(for: self.currentDetent, availableHeight: self.referenceHeight),
@@ -660,6 +699,90 @@ public final class BottomSheetController: UIViewController {
         self.surfaceView.setShadowVisible(detent.anchor != .hidden)
         self.surfaceView.handleView.accessibilityValue = detent.identifier.rawValue
         self.delegate?.bottomSheet(self, didChangeDetent: detent)
+    }
+}
+
+
+
+// MARK: - Content Bottom Inset
+
+extension BottomSheetController {
+
+    /// `static`에서 시트가 이 위치에 멈췄을 때 콘텐츠의 아래쪽 안전 영역에 더할 몫입니다.
+    ///
+    /// UIKit은 시트 View가 부모 View 바닥 아래로 나간 부분을 안전 영역으로 세지 않고 부모의 아래쪽 안전 영역만 물려줍니다.
+    /// 그래서 기준 위치에서 시트 바닥이 부모 View 바닥 아래로 나간 길이를 더하면 콘텐츠의 안전 영역 바닥이 부모 안전 영역
+    /// 바닥에 옵니다. 레이아웃 전체의 가장 높은 단계에서는 `overDragLimit`입니다. 기준 위치는 `UIComponentsCore`의
+    /// `contentBottomReferenceOffset`이 정합니다.
+    ///
+    /// - Parameter offset: 시트가 멈출 위치입니다.
+    /// - Returns: 더할 몫입니다. `fitToBounds`이거나 아직 자리를 잡을 수 없으면 `nil`이고, 그때는 콘텐츠 화면의 값을 건드리지 않습니다.
+    private func contentBottomInset(restingAt offset: CGFloat) -> CGFloat? {
+        guard self.contentMode == .static,
+              let host = self.hostView,
+              let heightConstraint = self.heightConstraint,
+              self.availableHeight > 0 else { return nil }
+
+        let layout = self.resolvedLayout
+        let reference: CGFloat
+
+        if self.layout.hasContentSizedDetent {
+            /// `.content` 단계를 잴 때 안전 영역이 섞이면 위치와 잰 높이가 서로를 바꿔 시트가 멈추지 않을 수 있어 고정합니다.
+            reference = layout.offset(
+                for: layout.highestDetent(availableHeight: self.availableHeight),
+                availableHeight: self.availableHeight
+            )
+        } else {
+            reference = layout.contentBottomReferenceOffset(
+                restingAt: offset,
+                availableHeight: self.availableHeight,
+                handleHeight: self.handleHeight,
+                among: self.allowedDetents,
+                behavior: self.behavior
+            )
+        }
+
+        let sheetBottom = host.safeAreaLayoutGuide.layoutFrame.minY + reference + heightConstraint.constant
+
+        return max(sheetBottom - host.bounds.maxY, 0)
+    }
+
+    /// 콘텐츠 화면에 시트 몫을 씁니다. 앱이 정한 값 위에 더합니다.
+    private func setContentBottomInset(_ inset: CGFloat) {
+        let content = self.contentViewController
+        let base = self.contentBottomInsetBase ?? content.additionalSafeAreaInsets.bottom
+
+        self.contentBottomInsetBase = base
+        self.appliedContentBottomInset = inset
+        content.additionalSafeAreaInsets.bottom = base + inset
+    }
+
+    /// 콘텐츠의 아래쪽 안전 영역을 이 위치에 맞춥니다.
+    ///
+    /// - Returns: 값이 바뀌었으면 `true`입니다.
+    @discardableResult
+    private func applyContentBottomInset(restingAt offset: CGFloat) -> Bool {
+        guard let inset = self.contentBottomInset(restingAt: offset),
+              abs(inset - self.appliedContentBottomInset) > 0.01 || self.contentBottomInsetBase == nil else { return false }
+
+        self.setContentBottomInset(inset)
+        return true
+    }
+
+    /// 끌거나 움직이는 중이 아니면 지금 위치에 맞춰 다시 맞춥니다.
+    private func refreshContentBottomInsetIfResting() {
+        guard self.hasEnteredScreen, self.isDragging == false, self.animator == nil else { return }
+
+        self.applyContentBottomInset(restingAt: self.currentOffset)
+    }
+
+    /// 시트가 더해 둔 몫을 거두고 앱의 값으로 되돌립니다.
+    private func removeContentBottomInset() {
+        guard let base = self.contentBottomInsetBase else { return }
+
+        self.contentViewController.additionalSafeAreaInsets.bottom = base
+        self.contentBottomInsetBase = nil
+        self.appliedContentBottomInset = 0
     }
 }
 
@@ -818,6 +941,8 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
     /// 따라가는 스크롤뷰가 있으면 손가락 하나가 시트와 스크롤을 번갈아 움직입니다.
     /// 시트가 가장 높은 단계보다 아래에 있으면 시트가, 가장 높은 단계에 닿은 뒤에는
     /// 스크롤이 움직입니다. 스크롤이 맨 위에 닿은 채로 아래로 끌면 다시 시트로 넘어옵니다.
+    /// `behavior.dragArea`가 `.handleAndBackground`이면 손잡이 줄·빈 배경·끌기 손잡이에서 시작한 끌기만 오고, 스크롤과
+    /// 오가지 않습니다.
     @objc
     private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let host = self.hostView else { return }
@@ -830,12 +955,23 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
             self.stopAnimation()
             self.isDragging = true
             self.dragStartOffset = self.currentOffset
+            self.dragRouting = self.behavior
 
-            let touchesScrollView = self.isTouchingTrackedScrollView(gesture)
-            self.dragMode = self.initialDragMode(velocity: velocity, touchesScrollView: touchesScrollView)
+            /// 출발지는 손가락이 닿는 순간 정해 둔 값을 씁니다. 지금 위치는 10pt쯤 움직인 뒤라 출발지가 아닙니다.
+            let target = self.dragRouting.initialDragTarget(
+                from: self.dragOrigin,
+                offset: self.currentOffset,
+                highestOffset: self.highestOffset,
+                isScrollAtTop: self.trackedScrollView.map { self.isAtTop($0) } ?? true,
+                isDraggingDown: velocity > 0
+            )
 
-            /// 손가락이 스크롤뷰 위에 있을 때만 붙잡습니다. 손잡이를 끌 때 스크롤 위치를 건드리면 목록이 맨 위로 튀어요.
-            if self.dragMode == .sheet, touchesScrollView {
+            /// 시트가 받지 않는 끌기는 대리자에서 걸러져 오지 않습니다. 오더라도 아무것도 넘기지 않는 스크롤 모드로 둡니다.
+            assert(target != .ignored, "시트가 받지 않는 끌기가 시작됐습니다.")
+            self.dragMode = target == .sheet ? .sheet : .scroll
+
+            /// 손가락이 스크롤뷰 위에서 시트를 움직일 때만 붙잡습니다. 손잡이를 끌 때 스크롤 위치를 건드리면 목록이 맨 위로 튀어요.
+            if self.dragRouting.locksTrackedScroll(whileDragging: target, from: self.dragOrigin) {
                 self.hideScrollIndicator()
                 self.pinTrackedScrollToTop()
             }
@@ -849,8 +985,14 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
                 let highest = self.highestOffset
 
                 /// 가장 높은 단계를 지나 더 올리려는데 스크롤할 내용이 남아 있으면 스크롤로 넘깁니다.
-                if proposed < highest, self.canHandOffToScroll {
+                if proposed < highest,
+                   self.dragRouting.sharesDragWithTrackedScroll(from: self.dragOrigin),
+                   self.canHandOffToScroll {
                     self.setOffset(highest)
+
+                    /// 시트가 허용된 가장 높은 단계에 섰으니 콘텐츠 아래 여백도 그 위치에 맞춥니다. 기본 설정에서는 값이 같아
+                    /// 아무 일도 없습니다.
+                    self.applyContentBottomInset(restingAt: highest)
                     self.dragMode = .scroll
                     self.dragStartOffset = highest
                     gesture.setTranslation(.zero, in: host)
@@ -872,7 +1014,8 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
 
             case .scroll:
                 /// 스크롤이 맨 위에 닿은 채로 아래로 끌면 시트가 이어서 내려옵니다.
-                guard let scrollView = self.trackedScrollView,
+                guard self.dragRouting.sharesDragWithTrackedScroll(from: self.dragOrigin),
+                      let scrollView = self.trackedScrollView,
                       self.isAtTop(scrollView),
                       velocity > 0 else { return }
 
@@ -911,32 +1054,126 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
         }
     }
 
-    /// 끌기가 시작될 때 시트와 스크롤 중 무엇이 움직일지 정합니다.
-    private func initialDragMode(velocity: CGFloat, touchesScrollView: Bool) -> DragMode {
-        /// 손잡이처럼 스크롤뷰 밖에서 시작한 끌기는 언제나 시트를 움직입니다.
-        guard let scrollView = self.trackedScrollView, touchesScrollView else { return .sheet }
+    /// 손가락이 처음 닿은 View로 끌기의 출발지를 정합니다.
+    ///
+    /// UIKit이 고른 View(`UITouch.view`)를 기준으로 삼아 숨김·상호작용 끔·겹침 순서를 그대로 따릅니다. 닿은 View에서
+    /// 시트까지 올라가며 처음 만나는 손잡이, 끌기 손잡이(`isBottomSheetDragHandle`), 따라가는 스크롤뷰가 출발지를 정합니다.
+    /// 끌기 손잡이 안에서 터치를 받아 쓰는 View(컨트롤, 스크롤뷰, 켜진 제스처 인식기)를 지나 왔으면 콘텐츠입니다.
+    /// 셋 다 없으면 그 길에 터치를 받아 쓰는 View가 있을 때 콘텐츠, 없을 때 빈 배경입니다. 콘텐츠 화면의 루트 View와 콘텐츠 자리에 붙은 제스처 인식기는 보지 않습니다. 다른 바텀시트 안의 터치와
+    /// 시트 밖 View는 콘텐츠로 봅니다. View를 모르면 위치로 판단합니다.
+    ///
+    /// - Parameters:
+    ///   - hitView: 손가락이 처음 닿은 View입니다.
+    ///   - location: 시트 View 좌표계에서 손가락이 닿은 위치입니다.
+    /// - Returns: 끌기의 출발지입니다.
+    /// - Complexity: O(d·g)입니다. d는 닿은 View에서 시트까지의 깊이, g는 View마다 달린 제스처 인식기 수입니다.
+    func classifyDragOrigin(hitView: UIView?, location: CGPoint) -> BottomSheetDragOrigin {
+        guard let hitView else {
+            let handleView = self.surfaceView.handleView
 
-        /// 스크롤이 시트를 올리는 모드에서는 가장 높은 단계 아래에 있으면 언제나 시트가 움직입니다.
-        if self.behavior.scrollingExpandsSheet, self.currentOffset > self.highestOffset + 0.5 {
-            return .sheet
+            if handleView.bounds.height > 0, handleView.frame.contains(location) {
+                return .handle
+            }
+
+            if let scrollView = self.trackedScrollView,
+               scrollView.point(inside: self.view.convert(location, to: scrollView), with: nil) {
+                return .trackedScrollView
+            }
+
+            return .content
         }
 
-        /// 맨 위에서 아래로 끌면 시트가, 그 밖에는 스크롤이 움직입니다.
-        if self.isAtTop(scrollView) {
-            return velocity > 0 ? .sheet : .scroll
+        var marker: BottomSheetDragOrigin?
+        var receivesTouches = false
+        var current: UIView? = hitView
+
+        while let view = current, view !== self.view {
+            /// 다른 바텀시트 안의 터치는 그 시트가 판단합니다.
+            if view is BottomSheetSurfaceView {
+                return .content
+            }
+
+            if marker == nil {
+                if view === self.surfaceView.handleView {
+                    marker = .handle
+                } else if view.isBottomSheetDragHandle {
+                    /// 지정한 View 안의 버튼·스크롤뷰·제스처 View는 자기 터치를 지킵니다. SwiftUI 수정자와 같습니다.
+                    marker = receivesTouches ? .content : .handle
+                } else if let scrollView = self.trackedScrollView, view === scrollView {
+                    marker = .trackedScrollView
+                } else if receivesTouches == false {
+                    receivesTouches = self.receivesTouches(view)
+                }
+            }
+
+            current = view.superview
         }
 
-        return .scroll
+        /// 시트 밖 View면 판단할 근거가 없어 시트가 받지 않는 콘텐츠로 봅니다.
+        guard current === self.view else { return .content }
+
+        return marker ?? (receivesTouches ? .content : .background)
     }
 
-    private func isTouchingTrackedScrollView(_ gesture: UIGestureRecognizer) -> Bool {
-        guard let scrollView = self.trackedScrollView else { return false }
+    /// 터치를 직접 받아 쓰는 View인지 나타냅니다.
+    ///
+    /// 콘텐츠 자리와 콘텐츠 화면의 루트 View는 시트 배경으로 봅니다. 키보드 내리기 탭이나 내비게이션 컨트롤러의 뒤로 가기
+    /// 제스처처럼 화면 전체에 붙인 인식기 하나 때문에 빈 배경 전체가 사라지지 않게 합니다. 루트 자체가 컨트롤이나
+    /// 스크롤뷰면 콘텐츠입니다.
+    ///
+    /// SwiftUI가 그리는 View(`UIHostingController`의 View)는 안쪽의 글자·버튼·스크롤뷰가 모두 그 View 하나로 hit-test되어
+    /// UIKit이 빈 곳을 가릴 수 없습니다. 빈 배경으로 보면 SwiftUI 스크롤과 시트 끌기가 경쟁하므로 콘텐츠로 봅니다.
+    private func receivesTouches(_ view: UIView) -> Bool {
+        if view is UIControl || view is UIScrollView || Self.isSwiftUIHostingView(view) {
+            return true
+        }
 
-        return scrollView.point(inside: gesture.location(in: scrollView), with: nil)
+        if view === self.surfaceView.contentContainerView || view === self.contentViewController.viewIfLoaded {
+            return false
+        }
+
+        return view.gestureRecognizers?.contains(where: { $0.isEnabled }) ?? false
+    }
+
+    /// SwiftUI가 그리는 호스팅 View인지 나타냅니다.
+    ///
+    /// UIKitExtension은 SwiftUI를 import하지 않아 타입으로 가릴 수 없으므로 클래스 이름으로 봅니다. 이름이 바뀌어 찾지
+    /// 못하면 빈 배경으로 보던 예전 판정으로 돌아갑니다.
+    private static func isSwiftUIHostingView(_ view: UIView) -> Bool {
+        return NSStringFromClass(type(of: view)).contains("UIHostingView")
+    }
+
+    /// 손가락이 닿는 순간 끌기의 출발지를 정하고, 시트가 받을 터치인지 판단합니다.
+    ///
+    /// `gestureRecognizerShouldBegin(_:)`은 손가락이 10pt쯤 움직인 뒤에 불려 그 위치가 출발지가 아닙니다.
+    /// 출발지는 여기서 정해 두고 끌기가 끝날 때까지 씁니다. 끌기가 시작되기 전에 출발지가 다른 손가락이 더해지면
+    /// `BottomSheetDragOrigin.merging(_:)`으로 합칩니다. `behavior.dragArea`가 `.handleAndBackground`이면 손잡이 줄,
+    /// 끌기 손잡이, 빈 배경 밖의 터치를 받지 않아 콘텐츠의 스크롤·셀 선택·스와이프와 경쟁하지 않습니다.
+    ///
+    /// - Complexity: O(d·g)입니다. d는 터치를 받은 View에서 시트까지의 깊이, g는 View마다 달린 제스처 인식기 수입니다.
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard gestureRecognizer === self.panGesture else { return true }
+
+        let origin = self.classifyDragOrigin(hitView: touch.view, location: touch.location(in: self.view))
+        let accepts = self.behavior.acceptsDrag(from: origin)
+
+        /// 끌기가 시작되기 전에 닿은 손가락만 출발지에 반영합니다. 시작된 뒤에 닿은 손가락은 받을지만 판단합니다.
+        if accepts, self.panGesture.state == .possible {
+            /// 같은 순간에 닿은 손가락들은 아직 `numberOfTouches`에 잡히지 않아 터치 시각으로 구분합니다.
+            let isFirstTouch = self.panGesture.numberOfTouches == 0 && touch.timestamp != self.dragOriginTimestamp
+
+            self.dragOrigin = isFirstTouch ? origin : self.dragOrigin.merging(origin)
+            self.dragOriginTimestamp = touch.timestamp
+        }
+
+        return accepts
     }
 
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard gestureRecognizer === self.panGesture else { return true }
+
+        /// 손가락이 닿은 뒤 시작하기 전에 `behavior`가 바뀌었을 수 있어 한 번 더 확인합니다.
+        guard self.behavior.acceptsDrag(from: self.dragOrigin) else { return false }
 
         /// 가로로 끄는 동작은 콘텐츠 안의 가로 스크롤이나 스와이프에 맡깁니다.
         let velocity = self.panGesture.velocity(in: self.view)
@@ -949,6 +1186,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
     ) -> Bool {
         guard gestureRecognizer === self.panGesture,
+              self.behavior.sharesDragWithTrackedScroll(from: self.dragOrigin),
               let scrollView = self.trackedScrollView else { return false }
 
         return otherGestureRecognizer === scrollView.panGestureRecognizer
@@ -963,8 +1201,9 @@ extension BottomSheetController {
 
     /// 스크롤이 움직여야 할 때가 아니면 맨 위에 붙잡아 둡니다.
     ///
-    /// 손가락이 시트를 움직이는 동안, 그리고 스크롤이 시트를 올리는 모드에서 시트가 가장 높은
-    /// 단계 아래에 있을 때는 스크롤이 움직이면 안 됩니다. `contentOffset`을 매번 되돌려 놓아
+    /// 손가락이 스크롤뷰 위에서 시트를 움직이는 동안, 그리고 스크롤이 시트를 올리는 모드에서 시트가 가장 높은
+    /// 단계 아래에 있을 때는 스크롤이 움직이면 안 됩니다. `behavior.dragArea`가 `.handleAndBackground`이면 붙잡지 않습니다.
+    /// 판단은 `UIComponentsCore`의 끌기 규칙을 따릅니다. `contentOffset`을 매번 되돌려 놓아
     /// 스크롤뷰의 제스처를 끊지 않고도 제자리에 세웁니다. `isScrollEnabled`를 끄면 진행 중인 터치가 취소됩니다.
     private func pinScrollIfNeeded(_ scrollView: UIScrollView) {
         guard self.shouldPinScroll else { return }
@@ -980,10 +1219,16 @@ extension BottomSheetController {
         guard self.trackedScrollView != nil else { return false }
 
         if self.isDragging {
-            return self.dragMode == .sheet
+            return self.dragRouting.locksTrackedScroll(
+                whileDragging: self.dragMode == .sheet ? .sheet : .scroll,
+                from: self.dragOrigin
+            )
         }
 
-        return self.behavior.scrollingExpandsSheet && self.currentOffset > self.highestOffset + 0.5
+        return self.behavior.locksTrackedScrollWhileIdle(
+            offset: self.currentOffset,
+            highestOffset: self.highestOffset
+        )
     }
 
     private func pinTrackedScrollToTop() {
@@ -1007,25 +1252,59 @@ extension BottomSheetController {
         let isTracking = scrollView.panGestureRecognizer.state == .began
             || scrollView.panGestureRecognizer.state == .changed
 
-        let contentHeight = scrollView.contentSize.height
-            + scrollView.adjustedContentInset.top
-            + scrollView.adjustedContentInset.bottom
+        /// 시트가 가장 높은 단계에 서면 아래 여백이 바뀔 수 있어 그 위치에서의 스크롤 끝으로 판단합니다.
+        let maxY = self.maxContentOffsetY(of: scrollView, restingAt: self.highestOffset)
 
-        return isTracking && contentHeight > scrollView.bounds.height + 0.5
+        return isTracking && maxY > -scrollView.adjustedContentInset.top + 0.5
     }
 
+    /// 따라가는 스크롤의 끝(`contentOffset.y` 최댓값)입니다. 위치를 넘기면 시트가 그 위치에 멈춘 뒤의 끝을 미리 계산합니다.
+    private func maxContentOffsetY(of scrollView: UIScrollView, restingAt offset: CGFloat? = nil) -> CGFloat {
+        let inset = scrollView.adjustedContentInset
+        var bottom = inset.bottom
+
+        /// 아래 여백 가운데 안전 영역에서 온 몫만 시트 몫을 따라 바뀝니다. `.never`처럼 안전 영역을 반영하지 않으면 그대로입니다.
+        let fromSafeArea = max(inset.bottom - scrollView.contentInset.bottom, 0)
+
+        if let offset, fromSafeArea > 0, let target = self.contentBottomInset(restingAt: offset) {
+            bottom += max(target - self.appliedContentBottomInset, -fromSafeArea)
+        }
+
+        return max(scrollView.contentSize.height + bottom - scrollView.bounds.height, -inset.top)
+    }
+
+    /// 아래 여백이 줄어 따라가는 스크롤이 끝을 넘었으면 끝으로 당깁니다.
+    ///
+    /// 애니메이션 블록 안에서 부르면 시트가 올라가는 만큼 목록이 함께 내려와 마지막 줄이 보이는 바닥에 붙어 있습니다.
+    /// 손가락이 스크롤하거나 감속 중이면 스크롤뷰가 스스로 되튀므로 건드리지 않습니다.
+    private func clampTrackedScrollToEnd() {
+        guard let scrollView = self.trackedScrollView,
+              scrollView.isTracking == false,
+              scrollView.isDecelerating == false else { return }
+
+        let maxY = self.maxContentOffsetY(of: scrollView)
+
+        guard scrollView.contentOffset.y > maxY + 0.5 else { return }
+
+        scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: maxY)
+    }
+
+    /// 시트가 스크롤을 붙잡는 동안 세로 스크롤 인디케이터를 숨깁니다. 이미 숨겼으면 원래 값을 덮어쓰지 않습니다.
     private func hideScrollIndicator() {
-        guard let scrollView = self.trackedScrollView else { return }
+        guard let scrollView = self.trackedScrollView,
+              self.isScrollIndicatorHiddenBySheet == false else { return }
 
         self.scrollIndicatorWasVisible = scrollView.showsVerticalScrollIndicator
+        self.isScrollIndicatorHiddenBySheet = true
         scrollView.showsVerticalScrollIndicator = false
     }
 
+    /// 시트가 숨긴 인디케이터만 원래 값으로 되돌립니다. 앱이 직접 끈 인디케이터는 건드리지 않습니다.
     private func restoreScrollIndicator() {
-        guard let scrollView = self.trackedScrollView,
-              scrollView.showsVerticalScrollIndicator != self.scrollIndicatorWasVisible else { return }
+        guard self.isScrollIndicatorHiddenBySheet else { return }
 
-        scrollView.showsVerticalScrollIndicator = self.scrollIndicatorWasVisible
+        self.isScrollIndicatorHiddenBySheet = false
+        self.trackedScrollView?.showsVerticalScrollIndicator = self.scrollIndicatorWasVisible
     }
 }
 
@@ -1065,8 +1344,12 @@ extension BottomSheetController {
         self.stopAnimation()
         self.updateDetent(detent)
 
+        let start = self.currentOffset
         let target = self.offset(for: detent)
-        let distance = target - self.currentOffset
+        let distance = target - start
+        let startInset = self.appliedContentBottomInset
+        let targetInset = self.contentBottomInset(restingAt: target)
+        let changesInset = targetInset.map { abs($0 - startInset) > 0.01 } ?? false
 
         /// 스프링의 초기 속도는 이동 거리로 나눈 값이어야 합니다. 속도를 그대로 넣으면 거리가 짧을 때
         /// 크게 튕깁니다. 거리가 아주 짧으면 나눈 값이 수십이 되어 되레 튀므로 한도를 둡니다.
@@ -1087,15 +1370,33 @@ extension BottomSheetController {
 
         animator.addAnimations {
             self.setOffset(target)
+
+            /// 블록 안에서 바꿔야 콘텐츠 배치가 시트와 같은 곡선으로 움직이고, 아래에 붙인 View가 보이는 바닥으로 미끄러져 갑니다.
+            if changesInset, let targetInset {
+                self.setContentBottomInset(targetInset)
+            }
+
             host.layoutIfNeeded()
+
+            /// 여백이 줄면 끝까지 내린 목록을 새 끝으로 당겨 마지막 줄이 보이는 바닥에 붙은 채 함께 움직이게 합니다.
+            if changesInset {
+                self.clampTrackedScrollToEnd()
+            }
         }
-        animator.addCompletion { [weak self] _ in
-            self?.animator = nil
+        animator.addCompletion { [weak self, weak animator] _ in
+            /// 멈춘 애니메이션의 완료가 새 애니메이션의 상태를 지우지 않게 자기 자신일 때만 정리합니다.
+            guard let self, let animator, self.animator === animator else { return }
+
+            self.animator = nil
+            self.contentInsetTransition = nil
 
             /// 움직이는 동안 안전 영역이 바뀌었을 수 있어 자리를 다시 맞춥니다.
-            self?.view.setNeedsLayout()
+            self.view.setNeedsLayout()
         }
 
+        self.contentInsetTransition = changesInset ? targetInset.map {
+            ContentInsetTransition(fromOffset: start, toOffset: target, fromInset: startInset, toInset: $0)
+        } : nil
         self.animator = animator
         animator.startAnimation()
 
@@ -1112,14 +1413,33 @@ extension BottomSheetController {
         guard let animator = self.animator else { return }
 
         let presentedMinY = self.view.layer.presentation()?.frame.minY
+        let transition = self.contentInsetTransition
+
+        /// 아래 여백과 함께 끝으로 당기던 목록이면 그려진 스크롤 위치도 이어받습니다.
+        let presentedScrollY = transition == nil ? nil : self.trackedScrollView?.layer.presentation()?.bounds.minY
 
         animator.stopAnimation(true)
         self.animator = nil
+        self.contentInsetTransition = nil
 
         guard let presentedMinY, let host = self.hostView else { return }
 
-        self.setOffset(presentedMinY - host.safeAreaLayoutGuide.layoutFrame.minY)
+        let offset = presentedMinY - host.safeAreaLayoutGuide.layoutFrame.minY
+        self.setOffset(offset)
+
+        /// 제약처럼 안전 영역도 이미 도착값이라, 그대로 두면 다음 배치에서 아래에 붙인 View와 목록이 도착 자리로 튑니다.
+        if let transition {
+            self.setContentBottomInset(transition.inset(at: offset))
+        }
+
         host.layoutIfNeeded()
+
+        if let presentedScrollY, let scrollView = self.trackedScrollView {
+            scrollView.contentOffset = CGPoint(
+                x: scrollView.contentOffset.x,
+                y: min(presentedScrollY, self.maxContentOffsetY(of: scrollView))
+            )
+        }
     }
 }
 #endif

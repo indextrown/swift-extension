@@ -49,4 +49,12 @@ func scrollStatePreferenceIgnoresAbsentValues() {
 
     #expect(layout.detents.count == 3)
 }
+
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
+@Test("손잡이·빈 곳으로만 끌면 콘텐츠 제스처를 끄고 안쪽 제스처는 살려요")
+func contentDragGestureMaskFollowsDragArea() {
+    #expect(BottomSheetBehavior.default.contentDragGestureMask == .all)
+    #expect(BottomSheetBehavior(scrollingExpandsSheet: false).contentDragGestureMask == .all)
+    #expect(BottomSheetBehavior(dragArea: .handleAndBackground).contentDragGestureMask == .subviews)
+}
 #endif

@@ -14,9 +14,10 @@ import SwiftUI
 /// 맨 위에 있는지"를 알 수 없습니다. 이 View는 스크롤 위치를 `PreferenceKey`로 시트에
 /// 올려 보내, 시트가 다 올라간 뒤 맨 위에서 아래로 끌면 스크롤 대신 시트가 움직이게 합니다.
 ///
-/// 시트 콘텐츠에 스크롤이 필요하면 `ScrollView` 대신 이 View를 씁니다. 일반 `ScrollView`를
-/// 쓰면 시트가 가장 높은 단계 아래에 있을 때는 스크롤이 잠기지만, 맨 위에서 시트로 넘어오는
-/// 동작은 되지 않습니다.
+/// 시트 콘텐츠에 스크롤이 필요하면 `ScrollView` 대신 이 View를 씁니다. 일반 `ScrollView`·`List`를
+/// 쓰면 스크롤이 잠기지 않아 스크롤과 시트가 함께 움직입니다. 일반 스크롤뷰를 그대로 두려면
+/// `BottomSheetBehavior`의 `dragArea`를 `.handleAndBackground`로 둡니다. 그 값에서는 이 View를 써도 시트와 묶이지 않고,
+/// `.content` 단계의 높이를 재는 데만 쓰입니다.
 ///
 /// ```swift
 /// .bottomSheet(detent: $detent) {
