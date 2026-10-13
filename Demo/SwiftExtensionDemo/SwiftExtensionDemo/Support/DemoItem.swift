@@ -67,6 +67,14 @@ extension DemoItem {
             systemImage: "arrow.up.and.down.square"
         ) {
             ContentSizedSheetDemoScreen()
+        },
+        DemoItem(
+            id: "nested-list-sheet",
+            title: "목록 여러 개 시트",
+            subtitle: "dragArea .handleAndBackground · UIKit",
+            systemImage: "list.bullet.rectangle"
+        ) {
+            NestedListSheetDemoScreen()
         }
     ]
 
@@ -95,6 +103,14 @@ extension DemoItem {
             systemImage: "arrow.up.and.down.square"
         ) {
             SwiftUIContentSizedSheetDemoScreen()
+        },
+        DemoItem(
+            id: "nested-list-sheet-swiftui",
+            title: "목록 여러 개 시트",
+            subtitle: "dragArea .handleAndBackground · SwiftUI",
+            systemImage: "list.bullet.rectangle"
+        ) {
+            SwiftUINestedListSheetDemoScreen()
         }
     ]
 
