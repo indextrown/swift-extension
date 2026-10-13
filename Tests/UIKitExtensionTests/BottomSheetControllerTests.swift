@@ -1012,6 +1012,27 @@ func switchingDragAreaRefitsAtRest() {
     #expect(abs(fixture.bottomMarkerGap - expectedDefaultGap) <= 0.5)
 }
 
+@Test("멈춘 채 여백이 줄면 끝까지 내린 따라가는 목록을 새 끝으로 당겨요") @MainActor
+func restingInsetShrinkClampsTrackedListToEnd() {
+    let fixture = VisibleBottomFixture(
+        host: .fullWindow,
+        behavior: BottomSheetBehavior(animatesInitialAppearance: false, scrollingExpandsSheet: false),
+        initialDetent: .half
+    )
+    fixture.sheet.track(scrollView: fixture.list.tableView)
+    fixture.settle()
+    fixture.scrollListToEnd()
+
+    /// 스크롤이 시트를 올리는 모드로 바꾸면 half는 가장 높은 단계 기준이라 아래 여백이 줄어요.
+    fixture.sheet.behavior.scrollingExpandsSheet = true
+    fixture.settle()
+
+    let tableView = fixture.list.tableView
+    let maxY = max(tableView.contentSize.height + tableView.adjustedContentInset.bottom - tableView.bounds.height, -tableView.adjustedContentInset.top)
+
+    #expect(tableView.contentOffset.y <= maxY + 0.5)
+}
+
 @Test("완전히 내리면 보이는 가장 낮은 단계의 몫을 유지해요") @MainActor
 func hiddenKeepsLowestVisibleShare() {
     let fixture = VisibleBottomFixture(

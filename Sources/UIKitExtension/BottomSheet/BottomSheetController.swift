@@ -770,10 +770,14 @@ extension BottomSheetController {
     }
 
     /// 끌거나 움직이는 중이 아니면 지금 위치에 맞춰 다시 맞춥니다.
+    ///
+    /// 여백이 줄면 끝까지 내린 따라가는 목록을 새 끝으로 당겨, 목록 아래에 빈 곳이 남지 않게 합니다.
     private func refreshContentBottomInsetIfResting() {
         guard self.hasEnteredScreen, self.isDragging == false, self.animator == nil else { return }
+        guard self.applyContentBottomInset(restingAt: self.currentOffset) else { return }
 
-        self.applyContentBottomInset(restingAt: self.currentOffset)
+        self.hostView?.layoutIfNeeded()
+        self.clampTrackedScrollToEnd()
     }
 
     /// 시트가 더해 둔 몫을 거두고 앱의 값으로 되돌립니다.
