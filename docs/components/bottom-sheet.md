@@ -10,6 +10,7 @@
 - [단계와 offset](#단계와-offset)
 - [탭바 뒤에서 올라오는 원리](#탭바-뒤에서-올라오는-원리)
 - [스크롤뷰 따라가기](#스크롤뷰-따라가기)
+- [끌 수 있는 영역(dragArea)](#끌-수-있는-영역dragarea)
 - [콘텐츠 높이만큼 올라오는 .content 단계](#콘텐츠-높이만큼-올라오는-content-단계)
 - [모양과 움직임 바꾸기](#모양과-움직임-바꾸기)
 - [콘텐츠 높이 모드](#콘텐츠-높이-모드)
@@ -44,14 +45,19 @@ UIKit의 `UISheetPresentationController`는 `present`로 띄워요. 창 전체�
 | `UIComponentsCore` | `BottomSheetAnchor.swift` | 단계의 높이를 재는 방법(`height`, `fraction`, `topInset`, `hidden`)과 offset 계산 |
 | `UIComponentsCore` | `BottomSheetDetent.swift` | 이름(`Identifier`)과 anchor를 묶은 단계 값. `tip`, `half`, `full`, `hidden`, `content` 프리셋 |
 | `UIComponentsCore` | `BottomSheetLayout.swift` | 단계 목록. 가장 가까운 단계, 위·아래 단계, 저항, 속도 투영, 뒷판 진행률 |
-| `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계, 스크롤이 시트를 올릴지 |
+| `UIComponentsCore` | `BottomSheetBehavior.swift` | 감속률, 스프링 감쇠, 애니메이션 길이, 저항 한계, 스크롤이 시트를 올릴지, 끌 수 있는 영역 |
+| `UIComponentsCore` | `BottomSheetDragArea.swift` | 끌 수 있는 영역 값(`entireSheet`, `handleAndBackground`) |
+| `UIComponentsCore` | `BottomSheetDragRouting.swift` | 끌기를 시트와 스크롤 중 누가 받을지, 스크롤을 붙잡을지, 손가락 여러 개의 출발지를 어떻게 합칠지 정하는 판단. 두 UI 타깃이 함께 쓰는 `package` 함수예요 |
+| `UIComponentsCore` | `BottomSheetContentBottom.swift` | UIKit `static`이 콘텐츠 아래 안전 영역을 어느 단계 기준으로 맞출지 정하는 계산(`package`) |
 | `UIKitExtension` | `BottomSheetAppearance.swift` | 배경색, 모서리, 손잡이, 그림자, 뒷판 (UIKit 타입) |
 | `UIKitExtension` | `BottomSheetSurfaceView.swift` | 시트 겉면과 손잡이 View. 그림자 경로, VoiceOver 조작 |
 | `UIKitExtension` | `BottomSheetControllerDelegate.swift` | 끌기 시작·이동·도착 단계 결정·단계 변경 콜백 |
-| `UIKitExtension` | `BottomSheetController.swift` | 자식으로 붙이기, 제스처, 스크롤 따라가기, 애니메이션 |
+| `UIKitExtension` | `BottomSheetController.swift` | 자식으로 붙이기, 제스처, 끌기 출발지 판정, 스크롤 따라가기, 콘텐츠 아래 안전 영역, 애니메이션 |
+| `UIKitExtension` | `UIView+BottomSheetDragHandle.swift` | 제목줄 같은 View를 끌기 손잡이로 지정하는 `UIView.isBottomSheetDragHandle` |
 | `SwiftUIExtension` | `BottomSheetStyle.swift` | 배경, 모서리, 손잡이, 그림자, 뒷판 (SwiftUI 타입) |
 | `SwiftUIExtension` | `BottomSheetScrollView.swift` | 스크롤 위치를 시트에 알리는 `ScrollView` 포장 |
 | `SwiftUIExtension` | `BottomSheetModifier.swift` | `View.bottomSheet(detent:)` 수정자와 시트를 그리는 overlay |
+| `SwiftUIExtension` | `BottomSheetDragHandle.swift` | 제목줄 같은 View를 끌기 손잡이로 지정하는 `View.bottomSheetDragHandle(_:)`과 제스처 출처 판정 |
 
 `UIComponentsCore`는 `import Foundation`만 써서 macOS `swift test`와 CI에서 검증돼요. 위치 계산의 회귀는 PR 단계에서 잡혀요. 두 UI 타깃은 이 모듈을 `@_exported import`로 다시 내보내므로 `import UIKitExtension` 또는 `import SwiftUIExtension` 하나로 `BottomSheetLayout` 같은 타입을 써요.
 
@@ -148,7 +154,7 @@ let sheet = BottomSheetController(
 | 바뀐 뒤 | `.content`에 머물고 있으면 스프링으로 새 높이로 옮겨요. 끌고 있는 동안은 건드리지 않아요 | 같아요 |
 
 - 콘텐츠가 화면보다 크면 안전 영역 위쪽까지만 올라와요(`.height`와 같은 잘라 내기).
-- UIKit 콘텐츠의 **아래쪽 제약은 `view.bottomAnchor`에 `lessThanOrEqualTo`로** 붙여요. `static` 모드의 시트 View는 탭바 뒤와 화면 밖까지 이어져 잰 높이보다 크기 때문에, `=`로 붙이면 마지막 View가 그만큼 늘어나요. `safeAreaLayoutGuide.bottomAnchor`에 붙이면 압축 크기에 안전 영역 아래 여백이 함께 잡혀 실제보다 크게 재요. 이런 콘텐츠는 `preferredContentSize`로 높이를 직접 정해요.
+- UIKit 콘텐츠의 **아래쪽 제약은 `view.bottomAnchor`에 `lessThanOrEqualTo`로** 붙여요. `static` 모드의 시트 View는 탭바 뒤와 화면 밖까지 이어져 잰 높이보다 크기 때문에, `=`로 붙이면 마지막 View가 그만큼 늘어나요. `safeAreaLayoutGuide.bottomAnchor`에 붙이면 압축 크기에 안전 영역 아래 여백(탭바·홈 인디케이터와, `static`이면 시트가 더한 `overDragLimit`)이 함께 잡혀 실제보다 크게 재요. 이런 콘텐츠는 `preferredContentSize`로 높이를 직접 정해요.
 - 재기 전(첫 배치 전)에는 `padding`만큼 보이는 것으로 계산해요. 첫 배치에서 바로 재므로 보통 눈에 띄지 않아요.
 - 코어(`BottomSheetLayout`)는 콘텐츠를 잴 수 없어요. UI 계층이 잰 값을 `resolvingContentHeight(_:)`로 넘기면 `.content` 단계가 같은 이름의 `.height`로 바뀐 레이아웃을 돌려주고, 위치 계산은 전부 그 레이아웃으로 해요. 계산 함수마다 콘텐츠 높이를 넘기지 않아도 되게 한 설계예요.
 
@@ -164,12 +170,14 @@ sheet.view.bottom == host.bottom            ← 안전 영역이 아니라 View 
 - 위쪽은 **안전 영역** 기준이라 내비게이션 바 아래에서 시작해요.
 - 아래쪽은 **부모 View 바닥**까지 이어져요. 탭바와 홈 인디케이터 뒤까지 배경이 깔려 아래가 잘린 것처럼 보이지 않아요.
 - `availableHeight`는 부모 안전 영역의 높이라서 탭바 높이가 이미 빠져 있어요. `tip`의 96pt는 탭바 **위에서** 보이는 높이예요.
-- 시트 View의 `safeAreaInsets.bottom`에 탭바 높이가 그대로 전달돼요. 콘텐츠 화면이 `safeAreaLayoutGuide`를 쓰면 탭바에 가리는 부분이 저절로 빠져요.
+- 시트 View의 `safeAreaInsets.bottom`에 탭바 높이가 그대로 전달돼요. 콘텐츠 화면이 `safeAreaLayoutGuide`를 쓰면 탭바에 가리는 부분이 저절로 빠져요. `static`은 시트 바닥이 부모 View 바닥 아래로 내려가는데 UIKit은 그 부분을 세지 않아서, 시트가 그 길이를 콘텐츠 화면에 더해요([콘텐츠의 아래쪽 안전 영역](#콘텐츠의-아래쪽-안전-영역-static)).
 - `hidden` 단계는 안전 영역 바닥이 아니라 **창 바닥**까지 내려요. 안전 영역 끝에 세우면 탭바가 없는 화면에서 손잡이가 홈 인디케이터 옆에 남고, 부모 View 바닥에 세우면 불투명 탭바가 부모 View를 탭바 위까지로 줄인 경우 iOS 26 탭바의 반투명한 위 가장자리로 시트가 비쳐 보여요. 데모에서 실제로 그렇게 보여 창 바닥으로 바꿨어요.
 
 ## 스크롤뷰 따라가기
 
-`track(scrollView:)`로 넘긴 스크롤뷰와 시트의 팬 제스처를 **동시에 인식**시키고, 손가락 하나가 둘 중 무엇을 움직일지 매 프레임 정해요. 손잡이처럼 스크롤뷰 **밖**에서 시작한 끌기는 언제나 시트를 움직여요.
+이 절은 `behavior.dragArea`가 기본값 `.entireSheet`일 때의 동작이에요. `.handleAndBackground`이면 스크롤뷰는 시트와 묶이지 않고 스크롤만 해요([끌 수 있는 영역](#끌-수-있는-영역dragarea) 참고).
+
+`track(scrollView:)`로 넘긴 스크롤뷰와 시트의 팬 제스처를 **동시에 인식**시키고, 손가락 하나가 둘 중 무엇을 움직일지 매 프레임 정해요. 스크롤뷰에서 시작한 끌기인지는 손가락이 **처음 닿은 자리**로 정해요. 손잡이, 빈 배경, 끌기 손잡이로 지정한 View처럼 스크롤뷰 **밖**에서 시작한 끌기는 언제나 시트를 움직이고, 스크롤로 넘어가지 않아요.
 
 기본값(`BottomSheetBehavior.scrollingExpandsSheet == true`)은 Apple 지도와 `UISheetPresentationController`처럼 스크롤이 시트를 먼저 올려요.
 
@@ -192,7 +200,118 @@ sheet.view.bottom == host.bottom            ← 안전 영역이 아니라 View 
 - 스크롤을 붙잡을 때 `isScrollEnabled`를 끄지 않아요. 끄면 진행 중인 터치가 취소돼 손가락이 끊겨요. 대신 `contentOffset`을 KVO로 지켜보며 매번 맨 위로 되돌려요.
 - 붙잡는 동안 세로 스크롤 인디케이터를 숨기고, 손을 떼면 원래 값으로 돌려요.
 - 가로로 끄는 동작은 시트가 받지 않아요. 콘텐츠 안의 가로 스크롤이나 스와이프에 맡겨요.
-- 세로 스크롤뷰 하나만 따라가요. 콘텐츠 안에 스크롤뷰가 여러 개면 대표 하나를 넘겨요.
+- 세로 스크롤뷰 하나만 따라가요. 콘텐츠 안에 스크롤뷰가 여러 개면 대표 하나를 넘기거나, 아래 `dragArea`를 `.handleAndBackground`로 둬요.
+
+## 끌 수 있는 영역(`dragArea`)
+
+`BottomSheetBehavior.dragArea`는 어디서 시작한 끌기가 시트를 움직일지 정해요. UIKit과 SwiftUI가 같은 값을 쓰고, 판단도 `UIComponentsCore`의 같은 함수로 해요.
+
+| 값 | 시트를 움직이는 끌기 | 쓰는 곳 |
+| --- | --- | --- |
+| `.entireSheet` (기본) | 시트 어디서 시작하든 움직여요. 따라가는 스크롤뷰 위에서 시작한 끌기는 [스크롤뷰 따라가기](#스크롤뷰-따라가기) 규칙을 따라요 | Apple 지도처럼 목록을 끌어 시트를 올리는 화면 |
+| `.handleAndBackground` | 손잡이 줄과, 콘텐츠가 터치를 받지 않는 빈 배경에서 시작한 끌기만 움직여요. 글자·버튼·목록이 받는 끌기는 콘텐츠에 맡겨요 | 시트 안에 `List`나 스크롤뷰가 여러 개라, 스크롤할 때 시트가 함께 끌리면 안 되는 화면. lucaszischka/BottomSheet의 기본 손맛 |
+
+어느 값에서든 **끌기 손잡이로 지정한 View**는 손잡이처럼 시트를 움직여요. 탭 제스처가 달린 제목줄처럼 그 자체가 터치를 받아 빈 배경으로 보지 않는 곳을 끌기 영역에 더할 때 써요. 안쪽 버튼·스크롤뷰는 지정해도 자기 터치를 지켜요.
+
+```swift
+// UIKit
+let sheet = BottomSheetController(
+    contentViewController: regionListViewController,
+    behavior: BottomSheetBehavior(dragArea: .handleAndBackground)
+)
+regionListViewController.headerView.isBottomSheetDragHandle = true   // 제목줄도 끌려요
+
+// SwiftUI: 일반 List를 그대로 둬요
+MapView()
+    .bottomSheet(
+        detent: $detent,
+        style: BottomSheetStyle(handleAreaHeight: 36),
+        behavior: BottomSheetBehavior(dragArea: .handleAndBackground)
+    ) {
+        VStack(spacing: 0) {
+            RegionHeader().bottomSheetDragHandle()   // 제목줄도 끌려요
+            List(regions) { RegionRow($0) }
+        }
+    }
+```
+
+시작 위치별로 움직이는 것은 이래요. "따라가는 스크롤뷰"는 UIKit `track(scrollView:)`로 넘긴 스크롤뷰와 SwiftUI `BottomSheetScrollView`예요.
+
+| 시작 위치 | `.entireSheet` | `.handleAndBackground` |
+| --- | --- | --- |
+| 손잡이 줄, 세로 | 시트 | 시트. 가장 높은 단계 너머로 밀어도 스크롤로 넘기지 않아요 |
+| 빈 배경(아래 정의) | 시트 | 시트 |
+| 끌기 손잡이로 지정한 View(안쪽 버튼·스크롤뷰는 빼고) | 시트. 스크롤과 엮이지 않아요 | 시트 |
+| 터치를 받는 콘텐츠(SwiftUI의 그려진 View, UIKit의 컨트롤·제스처 View) | 시트. SwiftUI는 `BottomSheetScrollView`가 있으면 따라가는 스크롤 규칙을 따라요 | 움직이지 않아요. 탭·버튼·셀 선택은 평소대로예요 |
+| 따라가는 스크롤뷰 | [스크롤뷰 따라가기](#스크롤뷰-따라가기) 규칙 | 스크롤만 해요. 어느 단계에서든 붙잡지 않고, 맨 위에서 아래로 당기면 바운스만 해요 |
+| SwiftUI 일반 `ScrollView`·`List` | 스크롤과 시트가 함께 움직여요 | 스크롤만 해요 |
+| UIKit에서 따라가지 않는 스크롤뷰 | 시트 팬과 스크롤뷰 팬이 동시 인식 없이 경쟁해요. iOS 27 시뮬레이터에서 세로로 끌면 목록이 이겨서 스크롤되고 시트는 그대로였어요 | 스크롤만 해요. 시트가 터치를 받지 않아요 |
+| 가로 스와이프 | 시트가 받지 않아요 | 같아요 |
+
+### 빈 배경
+
+"콘텐츠가 터치를 받지 않는 곳"을 가리는 기준은 프레임워크를 따라요.
+
+| | SwiftUI | UIKit |
+| --- | --- | --- |
+| 정의 | 시트 배경 도형에 붙인 제스처까지 터치가 내려오는 곳. 제스처를 가진 콘텐츠가 가로막지 않는 곳이에요 | 손가락이 닿은 View에서 시트까지 올라가는 길에 `UIControl`, `UIScrollView`, 켜진 제스처 인식기가 달린 View가 없는 곳 |
+| 빈 배경이에요 | `padding`, 스택 간격, `Spacer`, `Color.clear`, 짧은 콘텐츠 아래, 제스처가 없는 `Text`(iOS 27 시뮬레이터에서 제목 글자를 끌어 확인) | 콘텐츠 루트의 빈 곳, 스택뷰 간격, 색만 칠한 View, `UILabel`·`UIImageView` 위(터치를 받지 않아 감싸는 View가 골라져요) |
+| 콘텐츠예요 | `Button` 같은 컨트롤, 제스처가 붙은 View, `ScrollView`·`List` 전체. `Image`·색을 채운 도형이 가로막는지는 확인 필요예요 | 버튼·세그먼트 같은 컨트롤, 탭 제스처가 달린 카드, 테이블·스크롤뷰, SwiftUI 호스팅 View |
+| 주의할 점 | 콘텐츠 전체에 배경색을 칠하면 빈 배경이 사라져요. 시트 색은 `BottomSheetStyle.background`에 칠해요 | 콘텐츠 화면의 루트 View와 콘텐츠 자리에 붙은 제스처(키보드 내리기 탭 등)는 보지 않아요. 루트 자체가 스크롤뷰면 콘텐츠예요 |
+
+- UIKit 시트에 SwiftUI 콘텐츠(`UIHostingController`)를 넣으면 글자·버튼·스크롤뷰가 모두 호스팅 View 하나로 hit-test돼서 빈 곳을 가릴 수 없어요(iOS 27 시뮬레이터에서 확인). 그래서 호스팅 View는 통째로 콘텐츠로 봐요. `.handleAndBackground`에서는 손잡이 줄과 지정한 UIKit View로만 끌려요. SwiftUI 콘텐츠는 SwiftUI 판 시트를 쓰는 편이 좋아요.
+- 글자만 있는 제목줄은 두 판 모두 빈 배경이라 끌려요. 버튼 위는 두 판 모두 콘텐츠예요. lucaszischka/BottomSheet도 배경에 제스처를 붙이는 같은 구조라 같은 손맛이에요.
+
+### 끌기 손잡이 지정
+
+| | UIKit | SwiftUI |
+| --- | --- | --- |
+| API | `view.isBottomSheetDragHandle = true` | `.bottomSheetDragHandle()`, 끄려면 `.bottomSheetDragHandle(false)` |
+| 범위 | 그 View와 하위 View. 손가락에서 가까운 표시가 이겨요 | 그 View와 하위 View |
+| 안쪽 버튼·스크롤뷰·제스처 View | 자기 터치를 지켜요. 그 위에서 시작한 끌기는 시트가 받지 않아요 | 같아요(iOS 27 시뮬레이터에서 확인). lucaszischka의 `headerContent`와 같아요 |
+| 쓸모 | 탭 제스처가 달린 제목줄처럼 그 자체가 터치를 받는 View, 따라가는 스크롤뷰 안의 제목줄 | 배경을 채운 제목줄 카드나 탭 제스처가 붙은 줄, `.entireSheet`에서 `BottomSheetScrollView`와 엮이지 않아야 하는 제목줄 |
+| 효과가 없는 경우 | `UILabel`처럼 터치를 받지 않는 View에 지정하면 감싸는 View가 골라져 효과가 없어요. 감싸는 View에 지정해요 | 시트 밖에서는 아무 일도 하지 않아요 |
+
+- 세로 스크롤뷰 안의 View에는 지정하지 않아요. 스크롤과 끌기가 경쟁해요. 제목줄 안의 가로 스크롤뷰(칩 목록)는 자기 터치를 지켜 스크롤만 해요.
+- 지정한 View는 VoiceOver 요소를 바꾸지 않아요. 단계 조절은 손잡이 요소가 맡아요.
+- SwiftUI는 `isEnabled` 인자로 꺼요. 수정자를 `if`로 붙였다 떼면 View 정체성이 바뀌어 `@State`와 스크롤 위치가 초기화돼요.
+- UIKit은 다른 바텀시트 안의 View를 판단하지 않아요. 시트 안에 시트를 넣어도 바깥 시트가 안쪽 시트의 지정 View를 손잡이로 오인하지 않아요.
+
+### 출발지와 손가락 여러 개
+
+- 출발지는 손가락이 **처음 닿은 자리**로 정하고 손을 뗄 때까지 바꾸지 않아요. 손잡이에서 시작해 콘텐츠 쪽으로 넘어가도 시트가 따라오고, `.handleAndBackground`에서는 콘텐츠에서 시작해 손잡이를 지나도 시트가 그대로예요.
+- UIKit은 손가락이 닿는 순간 `gestureRecognizer(_:shouldReceive:)`에서 터치를 받은 View로 출발지를 정해요. 끌기가 시작되기 전에 출발지가 다른 손가락이 더해지면 손잡이 > 빈 배경 > 콘텐츠 > 따라가는 스크롤뷰 순서로 스크롤과 덜 엮이는 쪽을 남겨요. `.handleAndBackground`이면 받지 않는 터치는 아예 받지 않아서 콘텐츠의 스크롤·셀 선택·스와이프와 경쟁하지 않아요.
+- SwiftUI는 손잡이·배경·콘텐츠·지정 View에 따로 붙인 제스처로 출발지를 정하고, 먼저 끌기를 잡은 제스처가 끝까지 가져요. 예외는 하나예요. `.entireSheet`에서 지정 View를 끌면 같은 손가락으로 콘텐츠 제스처도 함께 시작하는데, 그때는 지정 View가 끌기를 넘겨받아요. 받지 않는 제스처는 `GestureMask.subviews`로 꺼서 안쪽 제스처만 살려요.
+- 끄는 도중에 값을 바꾸면 UIKit은 진행 중인 끌기를 시작할 때의 판단(시트와 스크롤 사이 넘김, 스크롤 붙잡기)대로 마치고, 다음 끌기부터 새 값을 따라요. SwiftUI는 새 값이 진행 중인 끌기의 출발지를 받지 않을 때만 그 끌기를 끝내고 가장 가까운 단계로 옮겨요.
+
+### `scrollingExpandsSheet`와 함께 쓰기
+
+`dragArea`가 먼저 걸러요. `scrollingExpandsSheet`는 시트에 닿은 끌기 가운데 따라가는 스크롤뷰에서 시작한 끌기만 시트와 스크롤에 나눠요.
+
+| `dragArea` | `scrollingExpandsSheet` | 따라가는 스크롤뷰를 위로 (가장 높은 단계 아래) | 스크롤 맨 위에서 아래로 | 빈 배경·지정 View | 터치를 받는 콘텐츠 | 비슷한 것 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `.entireSheet` | `true` (기본) | 시트. 스크롤은 맨 위에 붙잡아요 | 시트 | 시트 | 시트 | `prefersScrollingExpandsWhenScrolledToEdge = true` |
+| `.entireSheet` | `false` | 스크롤 | 시트 | 시트 | 시트 | `prefersScrollingExpandsWhenScrolledToEdge = false` |
+| `.handleAndBackground` | 상관없어요 | 스크롤 | 바운스만 해요 | 시트 | 움직이지 않아요 | lucaszischka/BottomSheet 기본값(`isContentDragEnabled = false`) |
+
+`.handleAndBackground`에서는 `scrollingExpandsSheet`를 쓰지 않아요. 기본값 `true`를 그대로 둔 채 `.handleAndBackground`만 켜는 경우가 가장 흔해서, 두 값을 함께 넣어도 경고하지 않아요.
+
+### 손으로 끌 곳 확보하기
+
+- 콘텐츠가 시트를 가득 채우면 손으로 끌 곳이 손잡이 줄뿐이에요. 손잡이 영역의 기본 높이 28pt는 잡기에 좁으니, UIKit `BottomSheetAppearance.handleAreaHeight`나 SwiftUI `BottomSheetStyle.handleAreaHeight`를 36~44pt로 키우거나 제목줄을 끌기 손잡이로 지정해요.
+- 손잡이를 숨겨도(`showsGrabber == false`) 빈 배경과 지정한 View로는 끌 수 있어요. 둘 다 없으면 시트는 UIKit `move(to:animated:)`, SwiftUI `detent` 바인딩, 뒷판 탭으로만 움직여요.
+- 손잡이를 숨기면 VoiceOver로 단계를 바꿀 손잡이 요소도 없어요. 단계를 바꿀 버튼을 화면에 따로 둬요. `handleAreaHeight`만 0이고 손잡이를 보이면 높이 0인 `adjustable` 요소가 남는데, VoiceOver가 이 요소에 닿는지는 확인 필요예요(데모에서 `handleAreaHeight: 0`으로 VoiceOver를 켜 봐요).
+
+### lucaszischka/BottomSheet에서 옮길 때
+
+| lucaszischka | 이 라이브러리 |
+| --- | --- |
+| 기본값(`isContentDragEnabled = false`): 인디케이터·헤더·배경으로 끌고 메인 콘텐츠는 안 끌림 | `dragArea: .handleAndBackground`. 우리 기본값(`.entireSheet`)은 반대라서 **꼭 넘겨요** |
+| `headerContent` | 제목줄 View에 `.bottomSheetDragHandle()`(UIKit은 `isBottomSheetDragHandle = true`) |
+| `.customBackground(...)` | SwiftUI `BottomSheetStyle.background`, UIKit `BottomSheetAppearance.backgroundColor` |
+| 인디케이터 탭으로 다음 단계 | 없어요. VoiceOver `adjustable` 조작만 있어요 |
+| 끌 때 키보드 내리기(`endEditing`) | 없어요 |
+| 대각선 끌기도 시트가 받음 | 세로 성분이 클 때만 받아요 |
 
 ## 모양과 움직임 바꾸기
 
@@ -225,7 +344,8 @@ let sheet = BottomSheetController(
 | `animationDuration` | 0.4s | 단계 사이 이동 시간. 대리자에서 다른 값을 함께 움직일 때 같은 길이를 써요 |
 | `overDragLimit` | 64 | 한계를 넘어 끌 때 따라오는 최대 거리. `tanh`로 점점 덜 따라와요 |
 | `animatesInitialAppearance` | true | 처음 붙을 때 아래에서 올라오는 애니메이션 |
-| `scrollingExpandsSheet` | true | 스크롤뷰를 위로 끌 때 시트가 먼저 올라갈지. `false`면 스크롤만 움직이고 시트는 손잡이로 옮겨요 |
+| `scrollingExpandsSheet` | true | 스크롤뷰를 위로 끌 때 시트가 먼저 올라갈지. `false`면 스크롤만 움직이고 시트는 손잡이로 옮겨요. `dragArea`가 `.entireSheet`일 때만 쓰여요 |
+| `dragArea` | `.entireSheet` | 어디서 시작한 끌기가 시트를 움직일지. `.handleAndBackground`이면 손잡이 줄과 빈 배경으로만 움직여요. [끌 수 있는 영역](#끌-수-있는-영역dragarea) 참고 |
 
 뒷판(`backdrop`)은 기본으로 없어요. 지도처럼 뒤 화면을 계속 조작해야 하는 곳이 기본 사용처라서요. 켜면 시트가 올라갈수록 진해지고, 탭하면 정한 단계로 내려가요.
 
@@ -235,12 +355,36 @@ UIKit 판은 시트가 움직일 때 콘텐츠 높이를 다루는 방식을 `co
 
 | 모드 | 동작 | 언제 |
 | --- | --- | --- |
-| `.static` (기본) | 시트 높이를 **가장 높은 단계 기준으로 고정**하고 위치만 옮겨요. 낮은 단계에서는 콘텐츠 아랫부분이 화면 밖에 있어요 | 리스트처럼 위에서부터 보이는 콘텐츠. 끌 때 부드러워요 |
+| `.static` (기본) | 시트 높이를 **가장 높은 단계 기준으로 고정**하고 위치만 옮겨요. 콘텐츠 아래 안전 영역은 시트가 맞춰요(아래 표) | 리스트처럼 위에서부터 보이는 콘텐츠. 끌 때 부드러워요 |
 | `.fitToBounds` | 시트 높이를 단계에 맞춰 늘리고 줄여요 | 내용을 세로 가운데에 맞추는 등 콘텐츠가 자기 크기를 다 알아야 할 때 |
 
 처음엔 `fitToBounds`만 있었는데 데모에서 **손으로 끌면 딱딱하고 버튼으로 옮기면 부드러운** 차이가 났어요. 버튼 이동은 Core Animation이 레이어를 보간해 배치가 한 번만 돌지만, 끌 때는 매 프레임 제약을 바꿔 Auto Layout이 다시 돌고, 시트 높이가 매 프레임 바뀌니 `UITableView`가 매 프레임 셀을 다시 배치했어요. `static`은 높이를 고정해 이 재배치를 없애요. FloatingPanel의 기본값도 같은 이유로 `static`이에요.
 
-`static`의 시트 높이는 `가장 높은 단계에서 보이는 높이 + 안전 영역 아래쪽 여백 + overDragLimit`이에요. 마지막 항은 한계 너머로 끌어 올릴 때 바닥이 뜨지 않게 하는 여유예요. 그만큼 시트 바닥이 화면 아래로 내려가 있지만, 콘텐츠가 `safeAreaLayoutGuide`를 쓰면 UIKit이 화면 밖 부분을 안전 영역 밖으로 계산해 주어 마지막 줄이 탭바 위에 보여요.
+`static`의 시트 높이는 `가장 높은 단계에서 보이는 높이 + 안전 영역 아래쪽 여백 + overDragLimit`이에요. 마지막 항은 한계 너머로 끌어 올릴 때 바닥이 뜨지 않게 하는 여유예요.
+
+### 콘텐츠의 아래쪽 안전 영역 (`static`)
+
+높이를 고정하면 시트 바닥이 부모 View 바닥 아래로 내려가요. 가장 높은 단계에서는 `overDragLimit`만큼, 낮은 단계에서는 거기에 내려간 만큼이 더해져요. **UIKit은 시트가 부모 View 밖으로 나간 부분을 안전 영역으로 세지 않아요.** 부모의 아래쪽 안전 영역(탭바·홈 인디케이터)만 물려줘요. 그대로 두면 그만큼 목록 끝과 안전 영역 바닥에 붙인 View가 화면 밖에 가려져요.
+
+그래서 시트가 콘텐츠 화면의 `additionalSafeAreaInsets.bottom`에 "시트 바닥이 부모 View 바닥 아래로 나간 길이"를 더해요. 앱이 붙이기 전에 정한 값은 지키고 그 위에 더하며, `remove()`하면 되돌려요. `fitToBounds`에서는 이 값을 건드리지 않아요.
+
+| 설정 | 가장 높은 단계 | 그 아래 단계 | 완전히 내린 단계 |
+| --- | --- | --- | --- |
+| 기본(`.entireSheet` + `scrollingExpandsSheet == true`) | 보이는 바닥에 맞춰요 | 가장 높은 단계 기준을 유지해요. 이 단계에서는 스크롤이 맨 위에 붙잡혀 있어 끝에 닿을 일이 없어요 | 가장 높은 단계 기준 |
+| `.handleAndBackground`, `scrollingExpandsSheet == false` | 보이는 바닥에 맞춰요 | 그 단계의 보이는 바닥에 맞춰요 | 보이는 가장 낮은 단계 기준 |
+| `.content` 단계가 있는 레이아웃 | 가장 높은 단계 기준으로 고정해요. 잰 높이와 위치가 서로를 흔들지 않게 해요 | 같아요 | 같아요 |
+
+iOS 27 시뮬레이터(창 874pt, `.standard`)에서 끝까지 내린 목록의 마지막 줄이 보이는 바닥보다 아래에 있던 길이예요.
+
+| | full | half | tip |
+| --- | --- | --- | --- |
+| 고치기 전 | 64pt | 437pt | 730pt |
+| 고친 뒤 기본 동작 | 0pt | 가장 높은 단계 기준 | 가장 높은 단계 기준 |
+| 고친 뒤 `.handleAndBackground` | 0pt | 0pt | 0pt |
+
+- 값은 끄는 동안 바꾸지 않아요. 손을 뗀 뒤 애니메이션 블록 안에서, 그리고 코드로 옮길 때 한 번 바꿔요. 그래서 끄는 동안은 아래에 붙인 View가 시트와 함께 움직이고, 끝까지 내린 목록을 끌어 올리는 동안에는 마지막 줄 아래가 비었다가 손을 떼면 채워져요. 끄는 동안에도 바닥에 붙어 있어야 하면 `fitToBounds`를 써요.
+- 끝까지 내린 따라가는 목록은 시트가 올라갈 때 새 끝으로 당겨 마지막 줄이 보이는 바닥에 붙은 채 움직여요.
+- 스크롤뷰는 `safeAreaLayoutGuide`가 아니라 View 가장자리에 붙이고 안전 영역은 `contentInsetAdjustmentBehavior`(기본 `.automatic`)에 맡겨요. 단계를 옮겨도 목록 프레임이 바뀌지 않아 가장 가벼워요. `.never`이면 늘어난 안전 영역이 반영되지 않으니 `safeAreaInsets.bottom`을 직접 써요.
 
 SwiftUI 판은 `fitToBounds`만 있어요. `LazyVStack` 재배치가 가벼워서 같은 문제가 나지 않았어요.
 
@@ -276,6 +420,7 @@ func bottomSheet(_ controller: BottomSheetController, didChangeCoveredHeight hei
 - 손잡이 영역이 VoiceOver 요소예요. 이름은 `appearance.handleAccessibilityLabel`, 값은 현재 단계 이름이에요.
 - `adjustable` 특성이라 위로 쓸어 올리면 한 단계 올라가고, 내리면 한 단계 내려가요. `allowedDetents`를 따라요.
 - 동작 줄이기(`UIAccessibility.isReduceMotionEnabled`)가 켜져 있으면 스프링 대신 완만한 곡선으로 옮기고, 처음 올라오는 애니메이션을 생략해요.
+- 손잡이를 숨기면(`showsGrabber == false`) VoiceOver로 단계를 바꿀 요소가 없어요. `.handleAndBackground`에서는 손으로는 빈 배경과 지정한 View로 끌 수 있지만, 단계를 바꿀 버튼을 화면에 따로 둬요. 끌기 손잡이로 지정한 View는 VoiceOver 요소를 바꾸지 않아요.
 
 ## SwiftUI에서 쓰기
 
@@ -300,7 +445,10 @@ struct MapScreen: View {
 ```
 
 - `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. UIKit의 `move(to:)`와 `currentDetent`를 하나로 합친 거예요. 손을 뗀 뒤 바뀌는 `detent`는 시트 애니메이션 블록 **안에서** 바뀌므로 `detent`에 묶인 바깥 View도 시트와 같이 움직여요.
-- 스크롤이 필요한 콘텐츠는 **`ScrollView` 대신 `BottomSheetScrollView`를 써요.** SwiftUI `ScrollView`는 스크롤 위치를 바깥에 알려 주지 않아서, 시트가 "맨 위에서 아래로 끌었다"를 알 방법이 없어요. 이 포장이 위치를 `PreferenceKey`로 올려 보내요.
+- 스크롤이 필요한 콘텐츠는 두 방법 중 하나를 골라요.
+  - 시트와 스크롤을 이어 움직이려면 **`ScrollView` 대신 `BottomSheetScrollView`를 써요.** SwiftUI `ScrollView`는 스크롤 위치를 바깥에 알려 주지 않아서, 시트가 "맨 위에서 아래로 끌었다"를 알 방법이 없어요. 이 포장이 위치를 `PreferenceKey`로 올려 보내요.
+  - 일반 `ScrollView`·`List`를 그대로 쓰거나 스크롤뷰가 여러 개면 `behavior`의 `dragArea`를 `.handleAndBackground`로 둬요. 손잡이 줄과 빈 곳으로만 시트가 움직이고 콘텐츠는 스크롤만 해요. 제목줄도 끌리게 하려면 `.bottomSheetDragHandle()`을 붙여요.
+  - 둘 다 하지 않고 일반 `ScrollView`·`List`를 넣으면 스크롤할 때 시트가 함께 끌려요.
 - 단계·레이아웃·움직임은 UIKit 판과 **같은 타입**(`BottomSheetLayout`, `BottomSheetBehavior`)을 써요. 모양만 `BottomSheetStyle`로 따로 있어요. SwiftUI 타입(`Color`, `ShapeStyle`)을 쓰기 때문이에요.
 - `onOffsetChange`는 시트가 움직이는 **매 프레임** 와요. 끄는 동안은 손가락 위치가, 손을 뗀 뒤나 `detent`를 바꿔 옮기는 동안은 스프링이 지나는 중간 위치가 그대로 와요. 받은 값을 `@State`에 넣고 버튼 위치나 지도 여백을 거기 묶으면 애니메이션 블록 없이도 시트와 같은 프레임에 움직여요. UIKit의 `didMoveTo`(끄는 동안) + `didChangeCoveredHeight`(도착)를 하나로 합친 셈인데, 도착값을 한 번만 주는 대신 중간값을 프레임마다 줘요.
   - 이렇게 한 이유: 도착값만 애니메이션 블록 안에서 넘기면 순수 SwiftUI View는 나란히 움직이지만, `Map`처럼 UIKit이 그리는 View는 안전 영역의 중간값을 보간하지 못해 손을 뗀 순간 엉뚱한 위치로 튀고 애니메이션이 끝날 때 다시 튀어요(데모에서 화면 녹화로 확인). 내부에서는 `Animatable` 모디파이어가 애니메이션 중간값을 `PreferenceKey`로 올려 보내요.
@@ -314,6 +462,10 @@ UIKit 판과 다른 점이에요.
 | 최소 버전 | iOS 15 | iOS 17, macOS 14, watchOS 10 |
 | 스크롤 잠그기 | `contentOffset`을 KVO로 되돌려요 | `scrollDisabled`로 잠가요. 잠기는 순간 진행 중인 스크롤이 끊겨요 |
 | 스크롤 → 시트 (맨 위에서 아래로) | 어떤 `UIScrollView`든 `track(scrollView:)` | `BottomSheetScrollView`를 쓴 콘텐츠만 |
+| 끌 수 있는 영역 | `behavior.dragArea`, `UIView.isBottomSheetDragHandle` | 같은 `behavior.dragArea`, `View.bottomSheetDragHandle(_:)` |
+| 빈 배경 | 닿은 View에서 시트까지 컨트롤·스크롤뷰·켜진 제스처 인식기가 없는 곳. 라벨·이미지 위도 빈 배경이에요 | 제스처를 가진 콘텐츠가 가로막지 않는 곳. 제스처 없는 `Text` 위도 빈 배경이에요 |
+| 끌기 출발지 판정 | 손가락이 닿는 순간 터치를 받은 View로 손잡이·빈 배경·따라가는 스크롤뷰·콘텐츠를 구분해요 | 손잡이·배경·콘텐츠·지정 View 제스처로 구분해요. 콘텐츠 안의 위치는 몰라서, `BottomSheetScrollView`가 있으면 콘텐츠 제스처의 끌기는 그 위로 봐요 |
+| 콘텐츠 아래 안전 영역 | `static`은 시트가 콘텐츠 화면의 `additionalSafeAreaInsets.bottom`을 맞춰요 | `fitToBounds`만 있어 맞출 일이 없어요 |
 | 시트 → 스크롤 (가장 높은 단계 너머로 밀 때) | 스크롤로 넘겨요 | 넘기지 않고 저항만 줘요. 손을 떼면 가장 높은 단계에 멈추고 그 뒤에 스크롤이 돼요 |
 | 위치 읽기 | `currentOffset`, `availableHeight`, `offset(for:)` | `onOffsetChange`가 움직이는 매 프레임 offset을 줘요. 높이가 필요하면 `GeometryReader`로 부모 안전 영역 높이를 재요 |
 | 시트를 따라가는 UIKit 뷰 | `didChangeCoveredHeight(animated:)`로 도착값을 받아 UIView 애니메이션을 나란히 걸어요 | `onOffsetChange`의 프레임별 값을 그대로 넣어요. 애니메이션을 걸지 않아요 |
@@ -322,16 +474,23 @@ UIKit 판과 다른 점이에요.
 
 | 무엇을 | 어떻게 | 어디서 |
 | --- | --- | --- |
-| 위치 계산, 저항, 속도 투영 | `swift test --filter UIKitExtensionTests` | macOS, CI |
-| 자식 붙이기, 단계 이동, 허용 목록, 대리자, hidden 위치 | 아래 `xcodebuild test` | iOS 시뮬레이터 |
+| 위치 계산, 저항, 속도 투영, 끌기 판단(`dragArea`, 손가락 합치기), `static` 바닥 기준 | `swift test --filter UIComponentsCoreTests` | macOS, CI |
+| 자식 붙이기, 단계 이동, 허용 목록, 대리자, hidden 위치, 끌기 출발지(빈 배경·지정 View·중첩 시트), 스크롤 붙잡기 | 아래 `xcodebuild test` | iOS 시뮬레이터 |
+| `static` 콘텐츠 바닥(목록 끝·안전 영역 바닥 표시가 보이는 바닥에 닿는지, `fitToBounds`와 비교, 세 가지 부모) | 아래 `xcodebuild test`의 `UIKitExtensionTests` | iOS 시뮬레이터 |
+| SwiftUI 제스처 마스크, 제스처 출처와 넘겨받기 규칙 | `swift test --filter SwiftUIExtensionTests`, 아래 `xcodebuild test`의 `SwiftUIExtensionTests` | macOS, CI, iOS 시뮬레이터 |
 | 제스처 손맛, 스크롤 핸드오프, 탭바 뒤 배치 | `Demo/SwiftExtensionDemo` 앱을 눌러 봐요. UIKit 판은 `UIKitExtension` 섹션, SwiftUI 판은 `SwiftUIExtension` 섹션 | iOS 시뮬레이터 |
+| 손잡이·빈 곳으로만 끌기, 제목줄 지정 | 데모의 `목록 여러 개 시트`(UIKit·SwiftUI)에서 목록·여백·제목·`초기화` 버튼·손잡이를 끌어 봐요. 오른쪽 위 메뉴의 `손잡이·빈 곳으로만 끌어요`와 `제목줄도 끌어요`로 비교해요 | iOS 시뮬레이터 |
 
 ```bash
 xcodebuild test \
   -scheme SwiftExtension-Package \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro Max' \
-  -only-testing:UIKitExtensionTests
+  -only-testing:UIKitExtensionTests \
+  -only-testing:SwiftUIExtensionTests \
+  -only-testing:UIComponentsCoreTests
 ```
+
+`UITouch`는 테스트에서 만들 수 없어서 `gestureRecognizer(_:shouldReceive:)`와 팬 상태 전이는 단위 테스트로 검증하지 못해요. 출발지 판정은 `classifyDragOrigin(hitView:location:)`, 판단 규칙은 `UIComponentsCoreTests`로 고정하고, 실제 터치는 데모로 확인해요.
 
 `-destination`의 기기 이름은 `xcrun simctl list devices available`에 있는 것으로 바꿔요. macOS `swift test`는 UIKit 코드를 컴파일하지 않으니, 컨트롤러를 바꿨으면 반드시 시뮬레이터 테스트를 돌려요.
 
@@ -344,7 +503,14 @@ xcodebuild test \
 | 애니메이션 중 위치 콜백 (UIKit) | 손으로 끄는 동안만 `didMoveTo`. 도착값은 `didChangeCoveredHeight(animated: true)`로 한 번 와요. SwiftUI 판은 `onOffsetChange`가 애니메이션 중에도 매 프레임 와요 | UIKit에서도 프레임별 값이 필요해지면 `CADisplayLink`로 알리기 |
 | 키보드 | 대응하지 않아요 | 키보드가 올라오면 시트를 함께 올리는 옵션 |
 | 가로 모드·iPad | 세로 바텀시트 하나 | 넓은 화면에서 옆으로 붙는 패널 레이아웃 |
-| SwiftUI 일반 `ScrollView` | 가장 높은 단계 아래에서만 잠겨요. 맨 위에서 시트로 넘어오지 않아요. `.content` 단계의 높이도 못 재요 | `BottomSheetScrollView`를 쓰거나, iOS 18 `onScrollGeometryChange`로 일반 `ScrollView`도 지원 |
+| SwiftUI 일반 `ScrollView`·`List` | `.entireSheet`에서는 잠기지 않고 스크롤과 시트가 함께 움직여요. 맨 위에서 시트로 넘어오지 않고, `.content` 단계의 높이도 못 재요 | 지금은 `.handleAndBackground`나 `BottomSheetScrollView`를 써요. iOS 18 `onScrollGeometryChange`로 일반 `ScrollView`도 따라가게 할지 검토 |
+| UIKit에서 따라가지 않는 스크롤뷰 (`.entireSheet`) | 시트 팬과 스크롤뷰 팬이 경쟁해요. iOS 27 시뮬레이터에서는 목록이 이겼어요. 다른 OS에서는 확인 필요(데모 `목록 여러 개 시트`에서 토글을 끄고 목록을 세로로 끌어 봐요) | 결과가 OS마다 다르면 `.handleAndBackground`를 안내하거나 경쟁 규칙을 정해요 |
+| UIKit `static`의 기본 동작에서 따라가지 않는 스크롤뷰 | 기본 동작(`.entireSheet` + `scrollingExpandsSheet`)의 낮은 단계는 가장 높은 단계 기준이라, 따라가지 않는 목록은 끝이 가려져요 | `.handleAndBackground`를 쓰거나 목록을 `track(scrollView:)`로 넘겨요 |
+| UIKit `static`에서 끄는 동안의 콘텐츠 바닥 | 끄는 동안은 아래 안전 영역을 바꾸지 않아, 끝까지 내린 목록을 끌어 올리는 동안 마지막 줄 아래가 비어요 | 끄는 동안에도 붙어 있어야 하면 `fitToBounds`. 프레임마다 바꾸는 안은 재배치 비용 때문에 넣지 않았어요 |
+| UIKit `static` 콘텐츠 바닥의 OS 차이 | "부모 밖으로 나간 부분은 안전 영역으로 세지 않는다"는 UIKit 규칙은 iOS 27·18.3 시뮬레이터에서만 확인했어요. iOS 15~17은 확인 필요 | 오래된 런타임에서 `staticListEndReachesVisibleBottom`을 돌려요 |
+| UIKit 빈 배경 판정의 한계 | `touchesBegan`을 직접 다루는 View(서명·그리기)는 제스처 인식기가 없어 빈 배경으로 보여요. 루트가 지도처럼 터치 전체를 쓰는 View여도 루트 인식기는 보지 않아요 | 그런 View는 제스처 인식기로 다루거나 `.entireSheet`를 써요. 지도는 루트 아래에 한 겹 더 둬요 |
+| UIKit 시트 안의 SwiftUI 콘텐츠 | 호스팅 View 안을 가릴 수 없어 통째로 콘텐츠예요. `.handleAndBackground`에서는 손잡이 줄과 지정한 UIKit View로만 끌려요 | SwiftUI 콘텐츠는 SwiftUI 판 시트를 써요 |
+| 손잡이 탭으로 다음 단계 | 손잡이에 탭 동작이 없어요 | lucaszischka의 `dragIndicatorAction` 같은 옵션 |
 | UIKit `.content` 단계의 자동 재측정 | 배치·`preferredContentSize`·스크롤뷰 `contentSize` 변화만 감지해요. 스택에 뷰를 더하는 식의 변화는 `invalidateContentHeight()`를 불러야 해요 | 콘텐츠 View의 크기 변화를 감지하는 방법이 생기면 자동으로 |
 | SwiftUI 시트 → 스크롤 핸드오프 | 가장 높은 단계 너머로 밀어도 스크롤로 넘기지 않아요 | SwiftUI에서 진행 중인 제스처를 `ScrollView`에 넘길 방법이 생기면 |
 | CI | macOS 러너라 UIKit·SwiftUI 코드가 컴파일되지 않아요 (SwiftUI 파일은 macOS 14 availability로 컴파일은 돼요) | 시뮬레이터 빌드·테스트 잡 추가 |

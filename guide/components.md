@@ -87,6 +87,8 @@ final class MapViewController: UIViewController {
 | --- | --- |
 | 시트 붙이기 | `add(to:)`. 다른 서브뷰를 모두 추가한 뒤에 부르면 시트가 맨 위에 놓여요 |
 | 시트 안 목록 스크롤과 이어 붙이기 | `track(scrollView:)`. 목록 맨 위에서 아래로 끌면 시트가 내려와요 |
+| 손잡이·빈 곳으로만 시트 끌기 | `behavior: BottomSheetBehavior(dragArea: .handleAndBackground)`. 목록을 스크롤해도 시트가 끌리지 않아요 |
+| 제목줄로도 시트 끌기 | `headerView.isBottomSheetDragHandle = true` |
 | 단계 옮기기 | `move(to:animated:)` |
 | 멈출 수 있는 단계 좁히기 | `allowedDetents` |
 | 시트가 움직일 때 알림 받기 | `delegate`(`BottomSheetControllerDelegate`) |
@@ -122,6 +124,41 @@ struct MapScreen: View {
 ```
 
 `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. 시트 위치를 프레임마다 받으려면 `onOffsetChange:`를 넘겨요.
+
+### 손잡이·빈 곳으로만 시트 끌기
+
+시트 안에 `List`나 스크롤뷰가 여러 개라 스크롤할 때 시트가 함께 끌리면 안 되면 `dragArea`를 `.handleAndBackground`로 둬요. 손잡이 줄과, 여백처럼 콘텐츠가 터치를 받지 않는 빈 곳을 끌어야 시트가 움직이고, 목록·버튼·글자는 평소대로 동작해요. UIKit과 SwiftUI가 같은 값을 써요.
+
+탭 제스처가 달린 제목줄처럼 그 자체가 터치를 받아 끌리지 않는 곳도 시트를 움직이게 하려면 끌기 손잡이로 지정해요. 안쪽 버튼은 지정해도 자기 터치를 지켜요.
+
+```swift
+// UIKit
+let sheet = BottomSheetController(
+    contentViewController: regionListViewController,
+    behavior: BottomSheetBehavior(dragArea: .handleAndBackground)
+)
+regionListViewController.headerView.isBottomSheetDragHandle = true
+
+// SwiftUI: 일반 List를 그대로 넣어요
+MapView()
+    .bottomSheet(
+        detent: self.$detent,
+        style: BottomSheetStyle(handleAreaHeight: 36),
+        behavior: BottomSheetBehavior(dragArea: .handleAndBackground)
+    ) {
+        VStack(spacing: 0) {
+            RegionHeader()
+                .bottomSheetDragHandle()
+            List(self.regions) { RegionRow(region: $0) }
+        }
+    }
+```
+
+- 콘텐츠가 시트를 가득 채우면 손으로 끌 곳이 손잡이 줄뿐이라, `handleAreaHeight`를 36~44pt로 키우거나 제목줄을 지정하기를 권장해요. 기본은 28pt예요.
+- 시트 색은 콘텐츠가 아니라 `BottomSheetStyle.background`(UIKit은 `BottomSheetAppearance.backgroundColor`)에 칠해요. SwiftUI 콘텐츠 전체에 배경색을 칠하면 빈 곳이 사라져요.
+- lucaszischka/BottomSheet에서 옮겨 올 때는 `.handleAndBackground`를 꼭 넘겨요. 그 라이브러리의 기본 손맛과 같고, 우리 기본값(`.entireSheet`)은 반대예요. `headerContent`는 `.bottomSheetDragHandle()`로 옮겨요.
+- UIKit `static`(기본)에서도 `.handleAndBackground`면 시트가 멈춘 단계에서 목록 끝과 안전 영역 바닥에 붙인 버튼이 보이는 바닥에 와요.
+- 빈 곳의 정확한 정의와 두 판의 차이, `scrollingExpandsSheet`와의 관계는 [바텀시트 문서](../docs/components/bottom-sheet.md#끌-수-있는-영역dragarea)에 있어요.
 
 ### 단계 바꾸기
 

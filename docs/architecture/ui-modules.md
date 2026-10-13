@@ -30,9 +30,9 @@
 
 | 타깃 | 컴포넌트 | 문서 |
 | --- | --- | --- |
-| `UIComponentsCore` | `BottomSheetAnchor` `BottomSheetDetent` `BottomSheetLayout` `BottomSheetBehavior` — 두 UI 타깃이 공유하는 단계·위치·움직임 계산 | [바텀시트](../components/bottom-sheet.md) |
-| `UIKitExtension` | `BottomSheetController` — 탭바 뒤에서 올라오는 바텀시트 | [바텀시트](../components/bottom-sheet.md) |
-| `SwiftUIExtension` | `bottomSheet(detent:)` 수정자, `BottomSheetScrollView` — 같은 시트의 SwiftUI 판. iOS 17+ | [바텀시트](../components/bottom-sheet.md) |
+| `UIComponentsCore` | `BottomSheetAnchor` `BottomSheetDetent` `BottomSheetLayout` `BottomSheetBehavior` `BottomSheetDragArea` — 두 UI 타깃이 공유하는 단계·위치·움직임 계산과 끌기 판단 | [바텀시트](../components/bottom-sheet.md) |
+| `UIKitExtension` | `BottomSheetController`, `UIView.isBottomSheetDragHandle` — 탭바 뒤에서 올라오는 바텀시트와 끌기 손잡이 지정 | [바텀시트](../components/bottom-sheet.md) |
+| `SwiftUIExtension` | `bottomSheet(detent:)`·`bottomSheetDragHandle(_:)` 수정자, `BottomSheetScrollView` — 같은 시트의 SwiftUI 판. iOS 17+ | [바텀시트](../components/bottom-sheet.md) |
 | `UIKitComponents` | `ViewComponent`, `ComponentContext`, `ComponentHostView`, `ComponentConfiguration`, `ComponentView` — UIKit 뷰 하나를 UIKit 뷰·스택뷰·셀·SwiftUI에 넣는 연결. iOS 15+ | [뷰 컴포넌트](../components/view-component.md) |
 
 ## 의존성 규칙
