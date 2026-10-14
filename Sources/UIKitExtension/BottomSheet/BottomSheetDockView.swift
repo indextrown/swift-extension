@@ -34,7 +34,11 @@ public final class BottomSheetDockView: UIStackView {
     /// 항목이 나타나고 사라질 때 쓰는 애니메이션 길이입니다.
     public static let visibilityAnimationDuration: TimeInterval = 0.25
 
-    private var visibilities: [UIView: BottomSheetDockVisibility] = [:]
+    /// 항목별 표시 규칙입니다. 항목에서 빠진 View는 지워서 붙잡고 있지 않아요.
+    private var visibilities: [ObjectIdentifier: BottomSheetDockVisibility] = [:]
+
+    /// 마지막으로 반영한 단계입니다. 붙은 뒤에 정한 규칙을 바로 반영하는 데 써요.
+    private var lastDetent: BottomSheetDetent.Identifier?
 
     /// 세로 스택으로 만듭니다.
     ///
@@ -66,12 +70,29 @@ public final class BottomSheetDockView: UIStackView {
     ///   - view: 이 도크의 arranged subview입니다.
     /// - Complexity: O(1)입니다.
     public func setVisibility(_ visibility: BottomSheetDockVisibility, for view: UIView) {
-        self.visibilities[view] = visibility
+        self.visibilities[ObjectIdentifier(view)] = visibility
+
+        /// 이미 붙어 단계를 알고 있으면 새 규칙을 바로 반영해요.
+        if let lastDetent = self.lastDetent {
+            self.update(for: lastDetent, animated: false)
+        }
     }
 
     /// 항목의 표시 규칙입니다. 정한 적이 없으면 `always`예요.
     public func visibility(for view: UIView) -> BottomSheetDockVisibility {
-        return self.visibilities[view] ?? .always
+        return self.visibilities[ObjectIdentifier(view)] ?? .always
+    }
+
+    /// 항목에서 빠진 View의 규칙을 지워요.
+    public override func removeArrangedSubview(_ view: UIView) {
+        super.removeArrangedSubview(view)
+        self.visibilities[ObjectIdentifier(view)] = nil
+    }
+
+    /// 하위 View에서 빠질 때도 규칙을 지워요. `removeFromSuperview()`는 `removeArrangedSubview(_:)`를 거치지 않아요.
+    public override func willRemoveSubview(_ subview: UIView) {
+        super.willRemoveSubview(subview)
+        self.visibilities[ObjectIdentifier(subview)] = nil
     }
 
     /// 시트가 머무는 단계에 맞춰 항목을 넣고 뺍니다.
@@ -84,9 +105,11 @@ public final class BottomSheetDockView: UIStackView {
     ///   - animated: 페이드 애니메이션을 쓸지 정합니다.
     /// - Complexity: O(n)입니다. n은 항목 개수입니다.
     public func update(for detent: BottomSheetDetent.Identifier, animated: Bool) {
+        self.lastDetent = detent
+
         let changes = self.arrangedSubviews.compactMap { view -> (UIView, Bool)? in
             /// 규칙을 정한 항목만 맡아요. 앱이 직접 숨긴 항목을 시트가 다시 보이게 하지 않습니다.
-            guard let visibility = self.visibilities[view] else { return nil }
+            guard let visibility = self.visibilities[ObjectIdentifier(view)] else { return nil }
 
             let visible = visibility.isVisible(at: detent)
 

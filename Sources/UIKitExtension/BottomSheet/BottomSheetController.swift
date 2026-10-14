@@ -394,7 +394,7 @@ public final class BottomSheetController: UIViewController {
 
     /// 시트 위에 떠서 함께 움직이는 컨트롤 묶음(도크)을 붙입니다.
     ///
-    /// View를 부모 View에 시트보다 **아래 층**으로 넣고, 아래쪽 끝을 `uncoveredLayoutGuide`의 아래쪽 끝에서
+    /// View를 부모 View에 시트와 뒷판보다 **아래 층**으로 넣고, 아래쪽 끝을 `uncoveredLayoutGuide`의 아래쪽 끝에서
     /// `insets.bottom`만큼 띄워 붙입니다. 가로는 `alignment` 쪽 가장자리에서 `insets`만큼 띄워요. 시트를 끌거나
     /// 스프링으로 움직일 때 같은 배치 패스에서 함께 움직이고, 시트가 `hidden`이면 탭바 위에 머물러요.
     ///
@@ -427,7 +427,8 @@ public final class BottomSheetController: UIViewController {
         }
 
         dock.translatesAutoresizingMaskIntoConstraints = false
-        host.insertSubview(dock, belowSubview: self.view)
+        /// 뒷판이 있으면 그 아래에 넣어, 화면이 어두워진 동안에는 도크가 눌리지 않고 함께 어두워지게 합니다. SwiftUI 판과 같아요.
+        host.insertSubview(dock, belowSubview: self.backdropView ?? self.view)
 
         let guide = self.uncoveredLayoutGuide
         var constraints = [dock.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -insets.bottom)]

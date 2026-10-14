@@ -1227,4 +1227,31 @@ func dockLeavesAppHiddenItemsAlone() {
     #expect(managed.isHidden == false)
     #expect(appOwned.isHidden)
 }
+@Test("붙인 뒤에 정한 규칙은 바로 반영되고, 뒷판이 있으면 도크는 뒷판 아래에 놓여요") @MainActor
+func dockRulesApplyImmediatelyAndSitBelowBackdrop() {
+    var appearance = BottomSheetAppearance()
+    appearance.backdrop = BottomSheetBackdrop(maximumAlpha: 0.3, largestUndimmedDetent: .tip)
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .tip, appearance: appearance)
+    let item = UIView()
+    let dock = BottomSheetDockView(arrangedSubviews: [item])
+
+    fixture.sheet.attachDock(dock)
+    #expect(item.isHidden == false)
+
+    dock.setVisibility(.whenHidden, for: item)
+    #expect(item.isHidden)
+
+    let subviews = fixture.host.view.subviews
+    let dockIndex = subviews.firstIndex(of: dock)!
+    let sheetIndex = subviews.firstIndex(of: fixture.sheet.view)!
+    #expect(dockIndex < sheetIndex)
+
+    if let backdropIndex = subviews.indices.first(where: { subviews[$0] !== dock && $0 < sheetIndex && $0 > dockIndex }) {
+        #expect(dockIndex < backdropIndex)
+    }
+
+    /// 항목에서 빼면 규칙을 지워요. 다시 넣으면 기본값으로 돌아가요.
+    dock.removeArrangedSubview(item)
+    #expect(dock.visibility(for: item) == .always)
+}
 #endif
