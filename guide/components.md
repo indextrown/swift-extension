@@ -91,6 +91,9 @@ final class MapViewController: UIViewController {
 | 제목줄로도 시트 끌기 | `headerView.isBottomSheetDragHandle = true` |
 | 단계 옮기기 | `move(to:animated:)` |
 | 멈출 수 있는 단계 좁히기 | `allowedDetents` |
+| 시트 위에 버튼 붙이기 | `sheet.attachDock(BottomSheetDockView(arrangedSubviews: [locateButton]))` |
+| 단계에 따라 버튼 숨기기 | `dock.setVisibility(.except([.full]), for: locateButton)` |
+| 손을 뗄 때 도착 단계 바꾸기 | 대리자 `bottomSheet(_:willEndDraggingWithVelocity:targetDetent:)`에서 `targetDetent`를 바꿔요 |
 | 시트가 움직일 때 알림 받기 | `delegate`(`BottomSheetControllerDelegate`) |
 | 떼어 내기 | `remove()` |
 
@@ -124,6 +127,12 @@ struct MapScreen: View {
 ```
 
 `detent`는 양방향 바인딩이에요. 값을 바꾸면 시트가 움직이고, 사용자가 끌어 옮기면 값이 바뀌어요. 시트 위치를 프레임마다 받으려면 `onOffsetChange:`를 넘겨요.
+
+| 하고 싶은 일 | 방법 |
+| --- | --- |
+| 시트 위에 버튼 붙이기 | 부모 View에 `.bottomSheetDock { LocateButton().buttonStyle(.bottomSheetDock) }` |
+| 단계에 따라 버튼 숨기기 | 도크 안 버튼에 `.bottomSheetDockVisibility(.except([.full]))` |
+| 손을 뗄 때 도착 단계 바꾸기 | `willEndDragging: { velocity, proposed in proposed == .hidden ? .tip : proposed }` |
 
 ### 손잡이·빈 곳으로만 시트 끌기
 

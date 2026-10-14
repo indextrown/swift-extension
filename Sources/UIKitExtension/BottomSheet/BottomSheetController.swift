@@ -67,6 +67,22 @@ public final class BottomSheetController: UIViewController {
     /// 시트의 움직임을 받는 대리자입니다.
     public weak var delegate: BottomSheetControllerDelegate?
 
+    /// 시트가 가리지 않은 영역입니다. 부모 안전 영역 위쪽 끝부터 시트 윗선까지예요.
+    ///
+    /// 현재 위치 버튼처럼 시트 위에 떠서 함께 움직여야 하는 View는 `bottomAnchor`를 이 가이드의
+    /// `bottomAnchor`에 붙이면 돼요. 제약 하나로 연결되므로 끌 때도, 스프링으로 움직일 때도 같은 배치
+    /// 패스에서 함께 움직입니다. 시트가 `hidden`으로 안전 영역 아래로 내려가면 가이드의 아래쪽 끝은
+    /// 안전 영역 아래쪽 끝(탭바 윗선)에서 멈춰요. 그래야 버튼이 탭바 뒤로 따라 내려가지 않습니다.
+    ///
+    /// `add(to:)` 뒤에 부모 View에 붙고 `remove()`에서 떼어져요.
+    public let uncoveredLayoutGuide = UILayoutGuide()
+
+    private var uncoveredConstraints: [NSLayoutConstraint] = []
+
+    /// `attachDock(_:)`로 붙인 View들이에요. `BottomSheetDockView`면 단계가 바뀔 때 항목 표시 규칙을 반영하고,
+    /// `remove()`할 때 함께 떼어 냅니다.
+    private let attachedDocks = NSHashTable<UIView>.weakObjects()
+
     /// 시트가 현재 머무는 단계입니다.
     ///
     /// 손을 뗀 뒤 도착 단계가 정해지는 순간 바뀝니다. 애니메이션이 끝날 때가 아닙니다.
@@ -297,6 +313,8 @@ public final class BottomSheetController: UIViewController {
             self.view.trailingAnchor.constraint(equalTo: host.trailingAnchor)
         ])
 
+        self.installUncoveredLayoutGuide(in: host)
+
         switch self.contentMode {
         case .static:
             /// 높이를 고정해 끄는 동안 콘텐츠가 다시 배치되지 않게 합니다. 값은 배치가 끝나 안전 영역을
@@ -326,6 +344,10 @@ public final class BottomSheetController: UIViewController {
         self.backdropView = nil
         self.hostLayoutObserver?.removeFromSuperview()
         self.hostLayoutObserver = nil
+        self.detachDocks()
+        NSLayoutConstraint.deactivate(self.uncoveredConstraints)
+        self.uncoveredConstraints = []
+        self.uncoveredLayoutGuide.owningView?.removeLayoutGuide(self.uncoveredLayoutGuide)
         self.view.removeFromSuperview()
         self.topConstraint = nil
         self.heightConstraint = nil
@@ -368,6 +390,82 @@ public final class BottomSheetController: UIViewController {
         }
 
         self.animate(to: detent, velocity: 0)
+    }
+
+    /// 시트 위에 떠서 함께 움직이는 컨트롤 묶음(도크)을 붙입니다.
+    ///
+    /// View를 부모 View에 시트와 뒷판보다 **아래 층**으로 넣고, 아래쪽 끝을 `uncoveredLayoutGuide`의 아래쪽 끝에서
+    /// `insets.bottom`만큼 띄워 붙입니다. 가로는 `alignment` 쪽 가장자리에서 `insets`만큼 띄워요. 시트를 끌거나
+    /// 스프링으로 움직일 때 같은 배치 패스에서 함께 움직이고, 시트가 `hidden`이면 탭바 위에 머물러요.
+    ///
+    /// `add(to:)` 뒤에 불러요. 붙기 전이면 아무 일도 하지 않고 빈 배열을 돌려줍니다. 떼려면 View를
+    /// `removeFromSuperview()`하면 제약도 함께 사라져요. `remove()`하면 붙인 도크도 함께 떼어지므로, 다시
+    /// `add(to:)`한 뒤에는 이 메서드를 다시 불러요. 이미 붙인 View로 다시 부르면 이전 제약을 지우고 새로 붙여요.
+    ///
+    /// ```swift
+    /// sheet.add(to: self)
+    /// sheet.attachDock(BottomSheetDockView(arrangedSubviews: [locateButton]))
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - dock: 붙일 View입니다. 보통 `BottomSheetDockView`지만 어떤 View든 됩니다.
+    ///   - alignment: 가로로 붙일 쪽입니다. 기본값은 `trailing`이에요.
+    ///   - insets: 가리지 않은 영역 가장자리에서 띄울 거리입니다. `top`은 쓰지 않아요.
+    /// - Returns: 건 제약입니다. 위치를 바꾸고 싶을 때 끄고 다시 걸 수 있어요.
+    /// - Complexity: O(1)입니다.
+    @discardableResult
+    public func attachDock(
+        _ dock: UIView,
+        alignment: BottomSheetDockAlignment = .trailing,
+        insets: UIEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 12, right: 16)
+    ) -> [NSLayoutConstraint] {
+        guard let host = self.hostView else { return [] }
+
+        /// 같은 View를 다시 붙이면 이전 제약이 남아 정렬이 겹치거나 충돌하므로, 떼어 제약을 지운 뒤 붙입니다.
+        if self.attachedDocks.contains(dock), dock.superview === host {
+            dock.removeFromSuperview()
+        }
+
+        dock.translatesAutoresizingMaskIntoConstraints = false
+        /// 뒷판이 있으면 그 아래에 넣어, 화면이 어두워진 동안에는 도크가 눌리지 않고 함께 어두워지게 합니다. SwiftUI 판과 같아요.
+        host.insertSubview(dock, belowSubview: self.backdropView ?? self.view)
+
+        let guide = self.uncoveredLayoutGuide
+        var constraints = [dock.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -insets.bottom)]
+
+        switch alignment {
+        case .leading:
+            constraints.append(dock.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: insets.left))
+
+        case .trailing:
+            constraints.append(dock.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -insets.right))
+        }
+
+        NSLayoutConstraint.activate(constraints)
+
+        self.attachedDocks.add(dock)
+
+        if let dockView = dock as? BottomSheetDockView {
+            dockView.update(for: self.currentDetent.identifier, animated: false)
+        }
+
+        return constraints
+    }
+
+    /// 붙어 있는 도크들의 항목 표시 규칙을 지금 단계에 맞춰요.
+    private func updateDocks(animated: Bool) {
+        for case let dock as BottomSheetDockView in self.attachedDocks.allObjects {
+            dock.update(for: self.currentDetent.identifier, animated: animated)
+        }
+    }
+
+    /// 이 시트가 붙인 도크를 부모 View에서 떼어 냅니다. 앱이 이미 다른 곳으로 옮긴 View는 건드리지 않습니다.
+    private func detachDocks() {
+        for dock in self.attachedDocks.allObjects where dock.superview === self.hostView {
+            dock.removeFromSuperview()
+        }
+
+        self.attachedDocks.removeAllObjects()
     }
 
     /// 콘텐츠 높이가 바뀌었다고 알립니다. `.content` 단계가 있을 때만 의미가 있습니다.
@@ -506,6 +604,31 @@ public final class BottomSheetController: UIViewController {
         heightConstraint.constant = height
     }
 
+    /// 가리지 않은 영역 가이드를 부모 View에 붙입니다.
+    ///
+    /// 아래쪽 끝은 **시트 윗선과 안전 영역 아래쪽 끝 중 더 위에 있는 것**이어야 합니다. Auto Layout에 min()은
+    /// 없으므로 필수 상한 두 개와 999 우선순위의 등식 하나로 만듭니다. 시트가 안전 영역 안에 있으면 등식이
+    /// 성립해 시트 윗선을 따라가고, hidden으로 그 아래로 내려가면 등식이 최소한으로만 깨져 안전 영역 아래쪽 끝에 멈춰요.
+    private func installUncoveredLayoutGuide(in host: UIView) {
+        let guide = self.uncoveredLayoutGuide
+        guide.identifier = "BottomSheetController.uncovered"
+        host.addLayoutGuide(guide)
+
+        let safe = host.safeAreaLayoutGuide
+        let followsSheet = guide.bottomAnchor.constraint(equalTo: self.view.topAnchor)
+        followsSheet.priority = UILayoutPriority(999)
+
+        self.uncoveredConstraints = [
+            guide.topAnchor.constraint(equalTo: safe.topAnchor),
+            guide.leadingAnchor.constraint(equalTo: safe.leadingAnchor),
+            guide.trailingAnchor.constraint(equalTo: safe.trailingAnchor),
+            guide.bottomAnchor.constraint(lessThanOrEqualTo: self.view.topAnchor),
+            guide.bottomAnchor.constraint(lessThanOrEqualTo: safe.bottomAnchor),
+            followsSheet
+        ]
+        NSLayoutConstraint.activate(self.uncoveredConstraints)
+    }
+
     private func installHostLayoutObserver(in host: UIView) {
         let observer = BottomSheetHostLayoutObserverView()
         observer.isHidden = true
@@ -626,7 +749,12 @@ public final class BottomSheetController: UIViewController {
             return
         }
 
-        self.view.transform = CGAffineTransform(translationX: 0, y: self.view.bounds.height)
+        let entrance = CGAffineTransform(translationX: 0, y: self.view.bounds.height)
+        /// 도크는 제약으로 시트 윗선을 따라가는데 `transform`은 제약에 반영되지 않아, 같은 이동을 직접 걸어 함께 올라오게 합니다.
+        let docks = self.attachedDocks.allObjects.filter { $0.superview === self.hostView }
+
+        self.view.transform = entrance
+        docks.forEach { $0.transform = entrance }
         self.view.isHidden = false
         self.backdropView?.alpha = 0
 
@@ -636,6 +764,7 @@ public final class BottomSheetController: UIViewController {
         )
         animator.addAnimations {
             self.view.transform = .identity
+            docks.forEach { $0.transform = .identity }
             self.updateBackdrop(for: target)
         }
         animator.startAnimation()
@@ -684,6 +813,7 @@ public final class BottomSheetController: UIViewController {
         /// 같은 이름이어도 높이 기준이 바뀌었을 수 있으므로 단계 값을 갈아 끼우고 자리를 다시 잡습니다.
         self.currentDetent = target
         self.surfaceView.handleView.accessibilityValue = target.identifier.rawValue
+        self.updateDocks(animated: self.hasEnteredScreen)
         self.updateStaticHeightIfNeeded()
 
         guard self.hasEnteredScreen else { return }
@@ -698,6 +828,8 @@ public final class BottomSheetController: UIViewController {
         self.currentDetent = detent
         self.surfaceView.setShadowVisible(detent.anchor != .hidden)
         self.surfaceView.handleView.accessibilityValue = detent.identifier.rawValue
+        /// 도착 단계가 정해진 순간 반영해서, 시트가 움직이는 동안 항목이 함께 나타나고 사라져요.
+        self.updateDocks(animated: self.hasEnteredScreen)
         self.delegate?.bottomSheet(self, didChangeDetent: detent)
     }
 }
@@ -1047,9 +1179,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
             var identifier = target.identifier
             self.delegate?.bottomSheet(self, willEndDraggingWithVelocity: velocity, targetDetent: &identifier)
 
-            if identifier != target.identifier, let overridden = self.resolvedLayout.detent(for: identifier) {
-                target = overridden
-            }
+            target = self.resolvedLayout.releaseTarget(target, overriddenBy: identifier)
 
             self.animate(to: target, velocity: velocity)
 

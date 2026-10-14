@@ -42,32 +42,88 @@ extension View {
     ///   - allowedDetents: 지금 멈출 수 있는 단계의 이름입니다. `nil`이면 전부입니다.
     ///   - style: 표시 속성입니다.
     ///   - behavior: 손을 따라오고 단계 사이를 옮기는 방식입니다.
+    ///   - willEndDragging: 사용자가 손을 뗀 직후, 도착 단계가 계산된 뒤 불립니다. 손을 뗀 속도(pt/s, 아래가 양수)와
+    ///     계산된 단계 이름을 받아 실제로 갈 단계 이름을 돌려줍니다. 받은 이름을 그대로 돌려주면 계산대로 갑니다.
+    ///     레이아웃에 없는 이름을 돌려주면 무시합니다. 끌기가 `onEnded` 없이 끊겨 정리될 때도 속도 0으로 불립니다.
+    ///     UIKit 대리자의 `bottomSheet(_:willEndDraggingWithVelocity:targetDetent:)`와 같습니다.
     ///   - onOffsetChange: 시트 위치(부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리)를 전달합니다.
     ///     시트가 움직이는 매 프레임 불립니다. 사용자가 끄는 동안은 손가락 위치를, 손을 뗀 뒤나 `detent`를
     ///     바꿔 옮기는 동안은 애니메이션이 지나는 중간 위치를 그대로 전달합니다. 받은 값을 `@State`에
     ///     넣기만 하면 그 값에 묶인 View가 시트와 같은 프레임에 움직여요. 애니메이션 블록으로 감싸지
     ///     않아도 되고, `Map`처럼 UIKit이 그리는 View의 안전 영역에 묶어도 튀지 않습니다.
     ///   - content: 시트 안에 표시할 내용입니다.
+    ///
+    /// 이 View 안에서는 환경값 `bottomSheetCoveredHeight`로 시트가 가린 높이를 읽을 수 있고,
+    /// `bottomSheetInset()`과 `bottomSheetDock(alignment:content:)`가 그 값을 써서 지도 여백과 떠 있는
+    /// 버튼을 시트에 맞춰 줘요.
     public func bottomSheet<Content: View>(
         detent: Binding<BottomSheetDetent.Identifier>,
         layout: BottomSheetLayout = .standard,
         allowedDetents: Set<BottomSheetDetent.Identifier>? = nil,
         style: BottomSheetStyle = .default,
         behavior: BottomSheetBehavior = .default,
+        willEndDragging: ((CGFloat, BottomSheetDetent.Identifier) -> BottomSheetDetent.Identifier)? = nil,
         onOffsetChange: ((CGFloat) -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        return self.overlay {
-            BottomSheetOverlay(
-                detent: detent,
-                layout: layout,
-                allowedDetents: allowedDetents,
-                style: style,
-                behavior: behavior,
-                onOffsetChange: onOffsetChange,
-                content: content()
-            )
-        }
+        return BottomSheetHost(
+            base: self,
+            detent: detent,
+            layout: layout,
+            allowedDetents: allowedDetents,
+            style: style,
+            behavior: behavior,
+            willEndDragging: willEndDragging,
+            onOffsetChange: onOffsetChange,
+            content: content()
+        )
+    }
+}
+
+
+
+// MARK: - Host
+
+/// 기본 View 위에 시트를 얹고, 시트가 가린 높이를 기본 View의 환경으로 내려 주는 View입니다.
+///
+/// 시트의 위치 상태는 `BottomSheetOverlay`가 갖고, 이 View는 그중 "가린 높이" 하나만 받아
+/// `bottomSheetCoveredHeight` 환경값으로 기본 View에 넣어요. 그래서 기본 View 안의 `bottomSheetInset()`과
+/// `bottomSheetDock`가 시트 상태에 접근하지 않고도 시트를 따라갈 수 있습니다.
+@available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
+struct BottomSheetHost<Base: View, Content: View>: View {
+
+    let base: Base
+
+    @Binding var detent: BottomSheetDetent.Identifier
+
+    let layout: BottomSheetLayout
+    let allowedDetents: Set<BottomSheetDetent.Identifier>?
+    let style: BottomSheetStyle
+    let behavior: BottomSheetBehavior
+    let willEndDragging: ((CGFloat, BottomSheetDetent.Identifier) -> BottomSheetDetent.Identifier)?
+    let onOffsetChange: ((CGFloat) -> Void)?
+    let content: Content
+
+    /// 시트가 가린 높이입니다. 오버레이가 프레임마다 채워 줘요.
+    @State private var coveredHeight: CGFloat = 0
+
+    var body: some View {
+        self.base
+            .environment(\.bottomSheetCoveredHeight, self.coveredHeight)
+            .environment(\.bottomSheetDetent, self.detent)
+            .overlay {
+                BottomSheetOverlay(
+                    detent: self.$detent,
+                    layout: self.layout,
+                    allowedDetents: self.allowedDetents,
+                    style: self.style,
+                    behavior: self.behavior,
+                    willEndDragging: self.willEndDragging,
+                    onOffsetChange: self.onOffsetChange,
+                    onCoveredHeightChange: { self.coveredHeight = $0 },
+                    content: self.content
+                )
+            }
     }
 }
 
@@ -90,7 +146,12 @@ struct BottomSheetOverlay<Content: View>: View {
     let allowedDetents: Set<BottomSheetDetent.Identifier>?
     let style: BottomSheetStyle
     let behavior: BottomSheetBehavior
+    let willEndDragging: ((CGFloat, BottomSheetDetent.Identifier) -> BottomSheetDetent.Identifier)?
     let onOffsetChange: ((CGFloat) -> Void)?
+
+    /// 시트가 가린 높이를 `BottomSheetHost`에 알립니다. 환경값 `bottomSheetCoveredHeight`의 원천이에요.
+    let onCoveredHeightChange: (CGFloat) -> Void
+
     let content: Content
 
     /// 부모 안전 영역 위쪽 끝에서 시트 위쪽 끝까지의 거리입니다. 이 값 하나로 위치를 정합니다.
@@ -183,6 +244,11 @@ struct BottomSheetOverlay<Content: View>: View {
             .onChange(of: measured) { _, newValue in
                 self.metrics = newValue
                 self.applyCurrentDetentIfNeeded()
+
+                /// 회전처럼 높이만 바뀌고 위치는 그대로면 위치 알림이 오지 않아, 가린 높이를 여기서 다시 알립니다.
+                if self.hasEntered {
+                    self.onCoveredHeightChange(max(newValue.available - self.offset, 0))
+                }
             }
         }
         .onChange(of: self.detent) { _, newValue in
@@ -203,6 +269,7 @@ struct BottomSheetOverlay<Content: View>: View {
             guard let newValue else { return }
 
             self.onOffsetChange?(newValue)
+            self.onCoveredHeightChange(max(self.metrics.available - newValue, 0))
         }
         .onPreferenceChange(BottomSheetContentHeightKey.self) { newValue in
             self.measuredContentHeight = newValue
@@ -677,12 +744,15 @@ struct BottomSheetOverlay<Content: View>: View {
         self.offset = releasedAt
 
         let velocity = value.velocity.height
-        let target = self.resolvedLayout.targetDetent(
-            releasedAt: releasedAt,
-            velocity: velocity,
-            availableHeight: self.metrics.available,
-            among: self.allowedDetents,
-            behavior: self.behavior
+        let target = self.adjustedTarget(
+            self.resolvedLayout.targetDetent(
+                releasedAt: releasedAt,
+                velocity: velocity,
+                availableHeight: self.metrics.available,
+                among: self.allowedDetents,
+                behavior: self.behavior
+            ),
+            velocity: velocity
         )
         let targetOffset = self.targetOffset(for: target)
 
@@ -696,6 +766,13 @@ struct BottomSheetOverlay<Content: View>: View {
                 self.detent = target.identifier
             }
         }
+    }
+
+    /// 계산된 도착 단계를 `willEndDragging`에 보여 주고, 돌려받은 이름이 레이아웃에 있으면 그 단계로 바꿉니다.
+    private func adjustedTarget(_ target: BottomSheetDetent, velocity: CGFloat) -> BottomSheetDetent {
+        guard let willEndDragging = self.willEndDragging else { return target }
+
+        return self.resolvedLayout.releaseTarget(target, overriddenBy: willEndDragging(velocity, target.identifier))
     }
 
     /// 제스처가 `onEnded` 없이 끊겼을 때 남은 끌기를 정리합니다.
@@ -712,12 +789,15 @@ struct BottomSheetOverlay<Content: View>: View {
 
         guard state.isSheet, state.isHorizontal == false else { return }
 
-        let target = self.resolvedLayout.targetDetent(
-            releasedAt: self.offset,
-            velocity: 0,
-            availableHeight: self.metrics.available,
-            among: self.allowedDetents,
-            behavior: self.behavior
+        let target = self.adjustedTarget(
+            self.resolvedLayout.targetDetent(
+                releasedAt: self.offset,
+                velocity: 0,
+                availableHeight: self.metrics.available,
+                among: self.allowedDetents,
+                behavior: self.behavior
+            ),
+            velocity: 0
         )
         let targetOffset = self.targetOffset(for: target)
 

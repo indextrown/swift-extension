@@ -324,6 +324,96 @@ func contentDetentUsesTrackedScrollViewContentSize() {
     #expect(fixture.sheet.currentOffset == fixture.availableHeight - (fixture.sheet.appearance.handleAreaHeight + 140))
 }
 
+@Test("uncoveredLayoutGuide는 안전 영역 위쪽 끝부터 시트 윗선까지이고 시트를 옮기면 따라가요") @MainActor
+func uncoveredLayoutGuideFollowsSheetTop() {
+    let fixture = SheetFixture(initialDetent: .half)
+    let guide = fixture.sheet.uncoveredLayoutGuide
+    let safe = fixture.host.view.safeAreaLayoutGuide.layoutFrame
+
+    #expect(guide.owningView === fixture.host.view)
+    #expect(guide.layoutFrame.minY == safe.minY)
+    #expect(guide.layoutFrame.minX == safe.minX)
+    #expect(guide.layoutFrame.maxX == safe.maxX)
+    #expect(guide.layoutFrame.maxY == fixture.sheet.view.frame.minY)
+
+    fixture.sheet.move(to: .tip, animated: false)
+
+    #expect(guide.layoutFrame.maxY == fixture.sheet.view.frame.minY)
+}
+
+@Test("시트가 hidden으로 안전 영역 아래에 있으면 uncoveredLayoutGuide는 안전 영역 아래쪽 끝에서 멈춰요") @MainActor
+func uncoveredLayoutGuideStopsAtSafeAreaBottomWhenHidden() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .hidden)
+    let safe = fixture.host.view.safeAreaLayoutGuide.layoutFrame
+
+    #expect(fixture.sheet.view.frame.minY >= safe.maxY)
+    #expect(fixture.sheet.uncoveredLayoutGuide.layoutFrame.maxY == safe.maxY)
+}
+
+@Test("attachDock은 도크를 시트 아래 층에 넣고 가리지 않은 영역의 아래 모서리에 붙여요") @MainActor
+func attachDockPinsViewAboveSheet() {
+    let fixture = SheetFixture(initialDetent: .half)
+    let host = fixture.host.view!
+    let button = BottomSheetDockView.makeButton(systemImage: "location.fill", accessibilityLabel: "현재 위치", action: UIAction { _ in })
+    let dock = BottomSheetDockView(arrangedSubviews: [button])
+
+    let constraints = fixture.sheet.attachDock(dock)
+    host.layoutIfNeeded()
+
+    #expect(constraints.count == 2)
+    #expect(dock.superview === host)
+    #expect(host.subviews.firstIndex(of: dock)! < host.subviews.firstIndex(of: fixture.sheet.view)!)
+    #expect(dock.frame.maxY == fixture.sheet.view.frame.minY - 12)
+    #expect(dock.frame.maxX == host.safeAreaLayoutGuide.layoutFrame.maxX - 16)
+    #expect(dock.frame.height == BottomSheetDockView.buttonSize)
+
+    /// 시트가 움직이면 같은 배치 패스에서 따라가요.
+    fixture.sheet.move(to: .tip, animated: false)
+    #expect(dock.frame.maxY == fixture.sheet.view.frame.minY - 12)
+
+    /// 왼쪽 정렬과 다른 여백도 돼요.
+    let leadingDock = UIView()
+    leadingDock.heightAnchor.constraint(equalToConstant: 30).isActive = true
+    leadingDock.widthAnchor.constraint(equalToConstant: 30).isActive = true
+    fixture.sheet.attachDock(leadingDock, alignment: .leading, insets: UIEdgeInsets(top: 0, left: 8, bottom: 4, right: 0))
+    host.layoutIfNeeded()
+    #expect(leadingDock.frame.minX == host.safeAreaLayoutGuide.layoutFrame.minX + 8)
+    #expect(leadingDock.frame.maxY == fixture.sheet.view.frame.minY - 4)
+}
+
+@Test("도크 항목은 표시 규칙에 따라 단계가 바뀔 때 나타나고 사라져요") @MainActor
+func dockItemsFollowVisibilityRules() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .half)
+    let open = BottomSheetDockView.makeButton(systemImage: "chevron.up", accessibilityLabel: "시트 열기", action: UIAction { _ in })
+    let locate = BottomSheetDockView.makeButton(systemImage: "location.fill", accessibilityLabel: "현재 위치", action: UIAction { _ in })
+    let dock = BottomSheetDockView(arrangedSubviews: [open, locate])
+    dock.setVisibility(.whenHidden, for: open)
+
+    fixture.sheet.attachDock(dock)
+
+    /// 붙는 순간 지금 단계(half)에 맞춰요.
+    #expect(open.isHidden)
+    #expect(locate.isHidden == false)
+    #expect(dock.visibility(for: open) == .whenHidden)
+    #expect(dock.visibility(for: locate) == .always)
+
+    fixture.sheet.move(to: .hidden, animated: false)
+    #expect(open.isHidden == false)
+    #expect(locate.isHidden == false)
+
+    fixture.sheet.move(to: .tip, animated: false)
+    #expect(open.isHidden)
+}
+
+@Test("attachDock은 붙기 전이면 아무 일도 하지 않아요") @MainActor
+func attachDockBeforeAddIsNoOp() {
+    let sheet = BottomSheetController(contentViewController: UIViewController())
+    let dock = UIView()
+
+    #expect(sheet.attachDock(dock).isEmpty)
+    #expect(dock.superview == nil)
+}
+
 @Test("스크롤이 시트를 올리지 않는 모드에서는 어느 단계에서든 스크롤이 자유로워요") @MainActor
 func trackedScrollIsFreeWhenScrollingDoesNotExpandSheet() {
     let fixture = SheetFixture(
@@ -1083,5 +1173,99 @@ func appBottomInsetIsPreserved(contentMode: BottomSheetContentMode) {
 
     fixture.sheet.remove()
     #expect(content.additionalSafeAreaInsets.bottom == 20)
+}
+@Test("remove()하면 붙인 도크도 함께 떼어지고, 다시 붙인 뒤 attachDock으로 이어 붙여요") @MainActor
+func removeDetachesDocks() {
+    let fixture = SheetFixture(initialDetent: .tip)
+    let dock = BottomSheetDockView(arrangedSubviews: [UIView()])
+    let other = UIView()
+
+    fixture.sheet.attachDock(dock)
+    fixture.sheet.attachDock(other)
+    #expect(dock.superview === fixture.host.view)
+
+    fixture.sheet.remove()
+    #expect(dock.superview == nil)
+    #expect(other.superview == nil)
+
+    fixture.sheet.add(to: fixture.host)
+    fixture.host.view.layoutIfNeeded()
+    #expect(dock.superview == nil)
+
+    #expect(fixture.sheet.attachDock(dock).isEmpty == false)
+    #expect(dock.superview === fixture.host.view)
+}
+@Test("같은 도크로 attachDock을 다시 부르면 이전 제약을 지우고 새 정렬로 붙여요") @MainActor
+func reattachingDockReplacesConstraints() {
+    let fixture = SheetFixture(initialDetent: .tip)
+    let dock = BottomSheetDockView(arrangedSubviews: [UIView()])
+
+    fixture.sheet.attachDock(dock, alignment: .trailing)
+    fixture.sheet.attachDock(dock, alignment: .leading, insets: UIEdgeInsets(top: 0, left: 20, bottom: 12, right: 16))
+    fixture.host.view.layoutIfNeeded()
+
+    let anchored = fixture.host.view.constraints.filter { $0.firstItem === dock || $0.secondItem === dock }
+
+    #expect(anchored.count == 2)
+    #expect(abs(dock.frame.minX - (fixture.sheet.uncoveredLayoutGuide.layoutFrame.minX + 20)) <= 0.5)
+}
+@Test("도크는 규칙을 정한 항목만 숨기고, 앱이 직접 숨긴 항목은 건드리지 않아요") @MainActor
+func dockLeavesAppHiddenItemsAlone() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .tip)
+    let managed = UIView()
+    let appOwned = UIView()
+    let dock = BottomSheetDockView(arrangedSubviews: [managed, appOwned])
+    dock.setVisibility(.whenHidden, for: managed)
+    appOwned.isHidden = true
+
+    fixture.sheet.attachDock(dock)
+    #expect(managed.isHidden)
+    #expect(appOwned.isHidden)
+
+    fixture.sheet.move(to: .hidden, animated: false)
+    dock.update(for: .hidden, animated: false)
+    #expect(managed.isHidden == false)
+    #expect(appOwned.isHidden)
+}
+@Test("붙인 뒤에 정한 규칙은 바로 반영되고, 뒷판이 있으면 도크는 뒷판 아래에 놓여요") @MainActor
+func dockRulesApplyImmediatelyAndSitBelowBackdrop() {
+    var appearance = BottomSheetAppearance()
+    appearance.backdrop = BottomSheetBackdrop(maximumAlpha: 0.3, largestUndimmedDetent: .tip)
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .tip, appearance: appearance)
+    let item = UIView()
+    let dock = BottomSheetDockView(arrangedSubviews: [item])
+
+    fixture.sheet.attachDock(dock)
+    #expect(item.isHidden == false)
+
+    dock.setVisibility(.whenHidden, for: item)
+    #expect(item.isHidden)
+
+    let subviews = fixture.host.view.subviews
+    let dockIndex = subviews.firstIndex(of: dock)!
+    let sheetIndex = subviews.firstIndex(of: fixture.sheet.view)!
+    #expect(dockIndex < sheetIndex)
+
+    if let backdropIndex = subviews.indices.first(where: { subviews[$0] !== dock && $0 < sheetIndex && $0 > dockIndex }) {
+        #expect(dockIndex < backdropIndex)
+    }
+
+    /// 항목에서 빼면 규칙을 지워요. 다시 넣으면 기본값으로 돌아가요.
+    dock.removeArrangedSubview(item)
+    #expect(dock.visibility(for: item) == .always)
+    #expect(item.isHidden == false)
+    #expect(item.alpha == 1)
+}
+@Test("규칙을 먼저 정하고 나중에 넣은 항목에도 바로 반영해요") @MainActor
+func dockAppliesRuleToLaterAddedItem() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .tip)
+    let dock = BottomSheetDockView()
+    let item = UIView()
+
+    fixture.sheet.attachDock(dock)
+    dock.setVisibility(.whenHidden, for: item)
+    dock.addArrangedSubview(item)
+
+    #expect(item.isHidden)
 }
 #endif
