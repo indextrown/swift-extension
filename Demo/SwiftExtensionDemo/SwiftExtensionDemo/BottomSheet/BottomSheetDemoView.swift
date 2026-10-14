@@ -23,6 +23,9 @@ struct BottomSheetDemoScreen: View {
     /// 시트 안의 목록을 위로 끌 때 시트가 먼저 올라갈지(Apple 지도 방식), 목록만 스크롤될지 정합니다.
     @State private var scrollingExpandsSheet = false
 
+    /// 켜면 손을 떼 `hidden`으로 갈 때 `tip`에서 멈춰요.
+    @State private var stopsAtTip = false
+
     /// 손잡이 줄과 빈 곳으로만 시트를 끌지 정합니다. 켜면 목록을 어떻게 끌어도 시트는 그대로예요.
     @State private var dragsWithHandleAndBackground = false
 
@@ -33,6 +36,7 @@ struct BottomSheetDemoScreen: View {
             Self.applyTabBarStyle(to: tabBarController, isOpaque: self.isOpaqueTabBar)
             Self.host(in: tabBarController)?.scrollingExpandsSheet = self.scrollingExpandsSheet
             Self.host(in: tabBarController)?.dragArea = self.dragsWithHandleAndBackground ? .handleAndBackground : .entireSheet
+            Self.host(in: tabBarController)?.stopsAtTip = self.stopsAtTip
         }
         .ignoresSafeArea()
         .navigationTitle("탭바 뒤 바텀시트")
@@ -43,6 +47,7 @@ struct BottomSheetDemoScreen: View {
                     Toggle("불투명 탭바", isOn: self.$isOpaqueTabBar)
                     Toggle("스크롤이 시트를 올려요", isOn: self.$scrollingExpandsSheet)
                     Toggle("손잡이·빈 곳으로만 끌어요", isOn: self.$dragsWithHandleAndBackground)
+                    Toggle("내려도 tip에서 멈춰요", isOn: self.$stopsAtTip)
                 } label: {
                     Label("옵션", systemImage: "ellipsis.circle")
                 }

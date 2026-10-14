@@ -26,6 +26,9 @@ struct SwiftUIBottomSheetDemoScreen: View {
     /// 손잡이 줄과 빈 곳으로만 시트를 끌지 정합니다. 켜면 목록을 어떻게 끌어도 시트는 그대로예요.
     @State private var dragsWithHandleAndBackground = false
 
+    /// 켜면 손을 떼 `hidden`으로 갈 때 `tip`에서 멈춰요. `willEndDragging`으로 도착 단계를 바꾸는 예시예요.
+    @State private var stopsAtTip = false
+
     /// 시트 위치예요. `onOffsetChange`가 시트가 움직이는 매 프레임 채워 줍니다.
     @State private var sheetOffset: CGFloat?
 
@@ -49,6 +52,7 @@ struct SwiftUIBottomSheetDemoScreen: View {
                 Menu {
                     Toggle("스크롤이 시트를 올려요", isOn: self.$scrollingExpandsSheet)
                     Toggle("손잡이·빈 곳으로만 끌어요", isOn: self.$dragsWithHandleAndBackground)
+                    Toggle("내려도 tip에서 멈춰요", isOn: self.$stopsAtTip)
                 } label: {
                     Label("옵션", systemImage: "ellipsis.circle")
                 }
@@ -114,6 +118,8 @@ struct SwiftUIBottomSheetDemoScreen: View {
                     Image(systemName: "location.fill")
                 }
                 .buttonStyle(.bottomSheetDock)
+                /// 시트가 full이면 지도가 거의 가려져 쓸 일이 없어 숨겨요.
+                .bottomSheetDockVisibility(.except([.full]))
                 .accessibilityLabel("현재 위치")
                 .accessibilityIdentifier("locate")
             }
@@ -125,6 +131,9 @@ struct SwiftUIBottomSheetDemoScreen: View {
                 scrollingExpandsSheet: self.scrollingExpandsSheet,
                 dragArea: self.dragsWithHandleAndBackground ? .handleAndBackground : .entireSheet
             ),
+            willEndDragging: { _, proposed in
+                self.stopsAtTip && proposed == .hidden ? .tip : proposed
+            },
             onOffsetChange: { self.sheetOffset = $0 }
         ) {
             BottomSheetScrollView {

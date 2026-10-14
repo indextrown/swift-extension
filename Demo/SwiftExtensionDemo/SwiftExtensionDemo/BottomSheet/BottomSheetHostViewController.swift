@@ -42,6 +42,8 @@ final class BottomSheetHostViewController: UIViewController {
         let dock = BottomSheetDockView(arrangedSubviews: [self.openButton, self.locateButton])
         /// 열기 버튼은 시트가 내려가 있을 때만 보여요. 누르면 시트가 올라가면서 버튼이 사라져요.
         dock.setVisibility(.whenHidden, for: self.openButton)
+        /// 시트가 full이면 지도가 거의 가려져 쓸 일이 없어 숨겨요.
+        dock.setVisibility(.except([.full]), for: self.locateButton)
         return dock
     }()
 
@@ -68,6 +70,9 @@ final class BottomSheetHostViewController: UIViewController {
     }
 
     /// 손가락으로 시트를 끌 수 있는 영역입니다. 데모 툴바의 토글이 바꿔 줍니다.
+    /// 켜면 손을 떼 `hidden`으로 갈 때 `tip`에서 멈춰요. 대리자의 `willEndDragging`으로 도착 단계를 바꾸는 예시예요.
+    var stopsAtTip = false
+
     var dragArea: BottomSheetDragArea {
         get { self.sheet.behavior.dragArea }
         set { self.sheet.behavior.dragArea = newValue }
@@ -264,6 +269,16 @@ final class BottomSheetHostViewController: UIViewController {
 // MARK: - BottomSheetControllerDelegate
 
 extension BottomSheetHostViewController: BottomSheetControllerDelegate {
+
+    func bottomSheet(
+        _ controller: BottomSheetController,
+        willEndDraggingWithVelocity velocity: CGFloat,
+        targetDetent: inout BottomSheetDetent.Identifier
+    ) {
+        if self.stopsAtTip, targetDetent == .hidden {
+            targetDetent = .tip
+        }
+    }
 
     func bottomSheet(_ controller: BottomSheetController, didChangeDetent detent: BottomSheetDetent) {
         self.report(extra: self.viewModel.state.message)
