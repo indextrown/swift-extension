@@ -244,6 +244,11 @@ struct BottomSheetOverlay<Content: View>: View {
             .onChange(of: measured) { _, newValue in
                 self.metrics = newValue
                 self.applyCurrentDetentIfNeeded()
+
+                /// 회전처럼 높이만 바뀌고 위치는 그대로면 위치 알림이 오지 않아, 가린 높이를 여기서 다시 알립니다.
+                if self.hasEntered {
+                    self.onCoveredHeightChange(max(newValue.available - self.offset, 0))
+                }
             }
         }
         .onChange(of: self.detent) { _, newValue in

@@ -400,7 +400,7 @@ public final class BottomSheetController: UIViewController {
     ///
     /// `add(to:)` 뒤에 불러요. 붙기 전이면 아무 일도 하지 않고 빈 배열을 돌려줍니다. 떼려면 View를
     /// `removeFromSuperview()`하면 제약도 함께 사라져요. `remove()`하면 붙인 도크도 함께 떼어지므로, 다시
-    /// `add(to:)`한 뒤에는 이 메서드를 다시 불러요.
+    /// `add(to:)`한 뒤에는 이 메서드를 다시 불러요. 이미 붙인 View로 다시 부르면 이전 제약을 지우고 새로 붙여요.
     ///
     /// ```swift
     /// sheet.add(to: self)
@@ -420,6 +420,11 @@ public final class BottomSheetController: UIViewController {
         insets: UIEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 12, right: 16)
     ) -> [NSLayoutConstraint] {
         guard let host = self.hostView else { return [] }
+
+        /// 같은 View를 다시 붙이면 이전 제약이 남아 정렬이 겹치거나 충돌하므로, 떼어 제약을 지운 뒤 붙입니다.
+        if self.attachedDocks.contains(dock), dock.superview === host {
+            dock.removeFromSuperview()
+        }
 
         dock.translatesAutoresizingMaskIntoConstraints = false
         host.insertSubview(dock, belowSubview: self.view)

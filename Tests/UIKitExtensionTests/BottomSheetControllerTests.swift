@@ -1195,4 +1195,18 @@ func removeDetachesDocks() {
     #expect(fixture.sheet.attachDock(dock).isEmpty == false)
     #expect(dock.superview === fixture.host.view)
 }
+@Test("같은 도크로 attachDock을 다시 부르면 이전 제약을 지우고 새 정렬로 붙여요") @MainActor
+func reattachingDockReplacesConstraints() {
+    let fixture = SheetFixture(initialDetent: .tip)
+    let dock = BottomSheetDockView(arrangedSubviews: [UIView()])
+
+    fixture.sheet.attachDock(dock, alignment: .trailing)
+    fixture.sheet.attachDock(dock, alignment: .leading, insets: UIEdgeInsets(top: 0, left: 20, bottom: 12, right: 16))
+    fixture.host.view.layoutIfNeeded()
+
+    let anchored = fixture.host.view.constraints.filter { $0.firstItem === dock || $0.secondItem === dock }
+
+    #expect(anchored.count == 2)
+    #expect(abs(dock.frame.minX - (fixture.sheet.uncoveredLayoutGuide.layoutFrame.minX + 20)) <= 0.5)
+}
 #endif
