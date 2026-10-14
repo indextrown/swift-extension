@@ -1253,5 +1253,7 @@ func dockRulesApplyImmediatelyAndSitBelowBackdrop() {
     /// 항목에서 빼면 규칙을 지워요. 다시 넣으면 기본값으로 돌아가요.
     dock.removeArrangedSubview(item)
     #expect(dock.visibility(for: item) == .always)
+    #expect(item.isHidden == false)
+    #expect(item.alpha == 1)
 }
 #endif

@@ -83,16 +83,24 @@ public final class BottomSheetDockView: UIStackView {
         return self.visibilities[ObjectIdentifier(view)] ?? .always
     }
 
-    /// 항목에서 빠진 View의 규칙을 지워요.
+    /// 항목에서 빠진 View의 규칙을 지우고, 도크가 숨겨 두었다면 다시 보이게 돌려놔요.
     public override func removeArrangedSubview(_ view: UIView) {
         super.removeArrangedSubview(view)
-        self.visibilities[ObjectIdentifier(view)] = nil
+        self.forgetVisibility(of: view)
     }
 
-    /// 하위 View에서 빠질 때도 규칙을 지워요. `removeFromSuperview()`는 `removeArrangedSubview(_:)`를 거치지 않아요.
+    /// 하위 View에서 빠질 때도 같아요. `removeFromSuperview()`는 `removeArrangedSubview(_:)`를 거치지 않아요.
     public override func willRemoveSubview(_ subview: UIView) {
         super.willRemoveSubview(subview)
-        self.visibilities[ObjectIdentifier(subview)] = nil
+        self.forgetVisibility(of: subview)
+    }
+
+    /// 규칙을 지워요. 규칙이 있던 항목은 도크가 `isHidden`·`alpha`를 맡았으므로 원래 보이는 상태로 돌려놔요.
+    private func forgetVisibility(of view: UIView) {
+        guard self.visibilities.removeValue(forKey: ObjectIdentifier(view)) != nil else { return }
+
+        view.isHidden = false
+        view.alpha = 1
     }
 
     /// 시트가 머무는 단계에 맞춰 항목을 넣고 뺍니다.
