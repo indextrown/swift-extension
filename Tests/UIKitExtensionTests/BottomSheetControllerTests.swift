@@ -1174,4 +1174,25 @@ func appBottomInsetIsPreserved(contentMode: BottomSheetContentMode) {
     fixture.sheet.remove()
     #expect(content.additionalSafeAreaInsets.bottom == 20)
 }
+@Test("remove()하면 붙인 도크도 함께 떼어지고, 다시 붙인 뒤 attachDock으로 이어 붙여요") @MainActor
+func removeDetachesDocks() {
+    let fixture = SheetFixture(initialDetent: .tip)
+    let dock = BottomSheetDockView(arrangedSubviews: [UIView()])
+    let other = UIView()
+
+    fixture.sheet.attachDock(dock)
+    fixture.sheet.attachDock(other)
+    #expect(dock.superview === fixture.host.view)
+
+    fixture.sheet.remove()
+    #expect(dock.superview == nil)
+    #expect(other.superview == nil)
+
+    fixture.sheet.add(to: fixture.host)
+    fixture.host.view.layoutIfNeeded()
+    #expect(dock.superview == nil)
+
+    #expect(fixture.sheet.attachDock(dock).isEmpty == false)
+    #expect(dock.superview === fixture.host.view)
+}
 #endif

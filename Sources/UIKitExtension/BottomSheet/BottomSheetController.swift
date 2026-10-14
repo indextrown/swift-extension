@@ -79,8 +79,9 @@ public final class BottomSheetController: UIViewController {
 
     private var uncoveredConstraints: [NSLayoutConstraint] = []
 
-    /// `attachDock(_:)`로 붙인 `BottomSheetDockView`들이에요. 단계가 바뀌면 항목 표시 규칙을 반영해 줍니다.
-    private let attachedDocks = NSHashTable<BottomSheetDockView>.weakObjects()
+    /// `attachDock(_:)`로 붙인 View들이에요. `BottomSheetDockView`면 단계가 바뀔 때 항목 표시 규칙을 반영하고,
+    /// `remove()`할 때 함께 떼어 냅니다.
+    private let attachedDocks = NSHashTable<UIView>.weakObjects()
 
     /// 시트가 현재 머무는 단계입니다.
     ///
@@ -343,6 +344,7 @@ public final class BottomSheetController: UIViewController {
         self.backdropView = nil
         self.hostLayoutObserver?.removeFromSuperview()
         self.hostLayoutObserver = nil
+        self.detachDocks()
         NSLayoutConstraint.deactivate(self.uncoveredConstraints)
         self.uncoveredConstraints = []
         self.uncoveredLayoutGuide.owningView?.removeLayoutGuide(self.uncoveredLayoutGuide)
@@ -397,7 +399,8 @@ public final class BottomSheetController: UIViewController {
     /// 스프링으로 움직일 때 같은 배치 패스에서 함께 움직이고, 시트가 `hidden`이면 탭바 위에 머물러요.
     ///
     /// `add(to:)` 뒤에 불러요. 붙기 전이면 아무 일도 하지 않고 빈 배열을 돌려줍니다. 떼려면 View를
-    /// `removeFromSuperview()`하면 제약도 함께 사라져요.
+    /// `removeFromSuperview()`하면 제약도 함께 사라져요. `remove()`하면 붙인 도크도 함께 떼어지므로, 다시
+    /// `add(to:)`한 뒤에는 이 메서드를 다시 불러요.
     ///
     /// ```swift
     /// sheet.add(to: self)
@@ -434,8 +437,9 @@ public final class BottomSheetController: UIViewController {
 
         NSLayoutConstraint.activate(constraints)
 
+        self.attachedDocks.add(dock)
+
         if let dockView = dock as? BottomSheetDockView {
-            self.attachedDocks.add(dockView)
             dockView.update(for: self.currentDetent.identifier, animated: false)
         }
 
@@ -444,9 +448,18 @@ public final class BottomSheetController: UIViewController {
 
     /// 붙어 있는 도크들의 항목 표시 규칙을 지금 단계에 맞춰요.
     private func updateDocks(animated: Bool) {
-        for dock in self.attachedDocks.allObjects {
+        for case let dock as BottomSheetDockView in self.attachedDocks.allObjects {
             dock.update(for: self.currentDetent.identifier, animated: animated)
         }
+    }
+
+    /// 이 시트가 붙인 도크를 부모 View에서 떼어 냅니다. 앱이 이미 다른 곳으로 옮긴 View는 건드리지 않습니다.
+    private func detachDocks() {
+        for dock in self.attachedDocks.allObjects where dock.superview === self.hostView {
+            dock.removeFromSuperview()
+        }
+
+        self.attachedDocks.removeAllObjects()
     }
 
     /// 콘텐츠 높이가 바뀌었다고 알립니다. `.content` 단계가 있을 때만 의미가 있습니다.
