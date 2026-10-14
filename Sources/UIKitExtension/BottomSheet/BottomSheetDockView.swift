@@ -73,14 +73,31 @@ public final class BottomSheetDockView: UIStackView {
         self.visibilities[ObjectIdentifier(view)] = visibility
 
         /// 이미 붙어 단계를 알고 있으면 새 규칙을 바로 반영해요.
-        if let lastDetent = self.lastDetent {
-            self.update(for: lastDetent, animated: false)
-        }
+        self.applyLastDetent()
     }
 
     /// 항목의 표시 규칙입니다. 정한 적이 없으면 `always`예요.
     public func visibility(for view: UIView) -> BottomSheetDockVisibility {
         return self.visibilities[ObjectIdentifier(view)] ?? .always
+    }
+
+    /// 항목을 더하면 정해 둔 규칙을 지금 단계에 바로 반영해요.
+    public override func addArrangedSubview(_ view: UIView) {
+        super.addArrangedSubview(view)
+        self.applyLastDetent()
+    }
+
+    /// 항목을 끼워 넣을 때도 같아요.
+    public override func insertArrangedSubview(_ view: UIView, at stackIndex: Int) {
+        super.insertArrangedSubview(view, at: stackIndex)
+        self.applyLastDetent()
+    }
+
+    /// 이미 붙어 단계를 알고 있으면 지금 규칙을 애니메이션 없이 반영해요.
+    private func applyLastDetent() {
+        guard let lastDetent = self.lastDetent else { return }
+
+        self.update(for: lastDetent, animated: false)
     }
 
     /// 항목에서 빠진 View의 규칙을 지우고, 도크가 숨겨 두었다면 다시 보이게 돌려놔요.

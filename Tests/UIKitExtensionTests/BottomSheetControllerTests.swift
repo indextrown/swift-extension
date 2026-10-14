@@ -1256,4 +1256,16 @@ func dockRulesApplyImmediatelyAndSitBelowBackdrop() {
     #expect(item.isHidden == false)
     #expect(item.alpha == 1)
 }
+@Test("규칙을 먼저 정하고 나중에 넣은 항목에도 바로 반영해요") @MainActor
+func dockAppliesRuleToLaterAddedItem() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .tip)
+    let dock = BottomSheetDockView()
+    let item = UIView()
+
+    fixture.sheet.attachDock(dock)
+    dock.setVisibility(.whenHidden, for: item)
+    dock.addArrangedSubview(item)
+
+    #expect(item.isHidden)
+}
 #endif

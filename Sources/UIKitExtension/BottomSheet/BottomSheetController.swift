@@ -749,7 +749,12 @@ public final class BottomSheetController: UIViewController {
             return
         }
 
-        self.view.transform = CGAffineTransform(translationX: 0, y: self.view.bounds.height)
+        let entrance = CGAffineTransform(translationX: 0, y: self.view.bounds.height)
+        /// 도크는 제약으로 시트 윗선을 따라가는데 `transform`은 제약에 반영되지 않아, 같은 이동을 직접 걸어 함께 올라오게 합니다.
+        let docks = self.attachedDocks.allObjects.filter { $0.superview === self.hostView }
+
+        self.view.transform = entrance
+        docks.forEach { $0.transform = entrance }
         self.view.isHidden = false
         self.backdropView?.alpha = 0
 
@@ -759,6 +764,7 @@ public final class BottomSheetController: UIViewController {
         )
         animator.addAnimations {
             self.view.transform = .identity
+            docks.forEach { $0.transform = .identity }
             self.updateBackdrop(for: target)
         }
         animator.startAnimation()
