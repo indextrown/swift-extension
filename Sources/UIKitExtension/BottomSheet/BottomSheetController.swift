@@ -1154,9 +1154,7 @@ extension BottomSheetController: UIGestureRecognizerDelegate {
             var identifier = target.identifier
             self.delegate?.bottomSheet(self, willEndDraggingWithVelocity: velocity, targetDetent: &identifier)
 
-            if identifier != target.identifier, let overridden = self.resolvedLayout.detent(for: identifier) {
-                target = overridden
-            }
+            target = self.resolvedLayout.releaseTarget(target, overriddenBy: identifier)
 
             self.animate(to: target, velocity: velocity)
 

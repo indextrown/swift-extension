@@ -191,3 +191,25 @@ extension BottomSheetBehavior {
         return offset > highestOffset + 0.5
     }
 }
+
+
+
+// MARK: - Release Target
+
+extension BottomSheetLayout {
+
+    /// 손을 뗄 때 앱이 바꾼 도착 단계를 정합니다. UIKit 대리자의 `willEndDragging`과 SwiftUI의 `willEndDragging`이 함께 씁니다.
+    ///
+    /// 앱이 돌려준 이름이 계산된 단계와 같거나 이 레이아웃에 없으면 계산된 단계를 그대로 씁니다.
+    ///
+    /// - Parameters:
+    ///   - target: 위치와 속도로 계산된 도착 단계입니다.
+    ///   - identifier: 앱이 돌려준 단계 이름입니다.
+    /// - Returns: 실제로 갈 단계입니다.
+    /// - Complexity: O(n)입니다. n은 단계 개수입니다.
+    package func releaseTarget(_ target: BottomSheetDetent, overriddenBy identifier: BottomSheetDetent.Identifier) -> BottomSheetDetent {
+        guard identifier != target.identifier, let overridden = self.detent(for: identifier) else { return target }
+
+        return overridden
+    }
+}

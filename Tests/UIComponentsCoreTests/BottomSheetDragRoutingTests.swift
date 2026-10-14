@@ -232,3 +232,16 @@ func scrollLockWhileIdleBoundary() {
     let handleAndBackground = BottomSheetBehavior(scrollingExpandsSheet: true, dragArea: .handleAndBackground)
     #expect(handleAndBackground.locksTrackedScrollWhileIdle(offset: belowHighest, highestOffset: highest) == false)
 }
+
+// MARK: - Release Target
+
+@Test("손을 뗄 때 앱이 돌려준 단계는 레이아웃에 있을 때만 써요")
+func releaseTargetFollowsOverrideOnlyInLayout() {
+    let layout = BottomSheetLayout.standard
+    let half = layout.detent(for: .half)!
+
+    #expect(layout.releaseTarget(half, overriddenBy: .half) == half)
+    #expect(layout.releaseTarget(half, overriddenBy: .tip) == layout.detent(for: .tip))
+    #expect(layout.releaseTarget(half, overriddenBy: .hidden) == half)
+    #expect(layout.releaseTarget(half, overriddenBy: "unknown") == half)
+}
