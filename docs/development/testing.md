@@ -68,6 +68,14 @@ xcodebuild test \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro Max' \
   -only-testing:UIKitExtensionTests
 
+# 바텀시트를 고쳤으면 UIKit·SwiftUI·코어 테스트를 함께 실행
+xcodebuild test \
+  -scheme SwiftExtension-Package \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:UIKitExtensionTests \
+  -only-testing:SwiftUIExtensionTests \
+  -only-testing:UIComponentsCoreTests
+
 # UIKitComponents 테스트를 시뮬레이터에서 실행
 xcodebuild test \
   -scheme SwiftExtension-Package \
@@ -78,6 +86,7 @@ xcodebuild test \
 - `SwiftExtension-Package`는 SwiftPM이 만드는 스킴이에요. `xcodebuild -list`로 확인할 수 있어요.
 - 기기 이름은 `xcrun simctl list devices available`에 있는 것으로 바꿔요.
 - UIKit 코드의 테스트 파일은 같은 `#if`로 감싸요. macOS에서는 빈 파일로 컴파일돼요.
+- 창의 안전 영역을 재는 바텀시트 테스트(`static` 콘텐츠 바닥 등)는 iOS 시뮬레이터에서만 의미가 있어요. UIKit 동작이 OS마다 다를 수 있으니, 가능하면 설치된 가장 오래된 iOS 런타임에서도 한 번 돌려요.
 
 ## 테스트 작성 방법
 

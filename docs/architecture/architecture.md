@@ -88,6 +88,7 @@
 - `UIKitExtension`과 `SwiftUIExtension`은 `UIComponentsCore`에 의존하고, 그 타입을 `@_exported import`로 다시 내보내요. 쓰는 쪽은 `import UIKitExtension` 하나로 `BottomSheetLayout`까지 써요.
 - `UIKitComponents`는 지금 어떤 타깃에도 의존하지 않아요. 나중에 `CollectionViewAdapter`를 옮기면 그 타깃이 `UIKitComponents`에 의존해요.
 - `UIComponentsCore`는 UIKit·SwiftUI를 모르는 계산만 담아요. 두 UI 타깃이 같은 코드를 쓰게 되면 여기로 내려요. 그래서 macOS `swift test`와 CI에서도 검증돼요.
+- 두 UI 타깃끼리만 나누는 판단 함수와 표현은 `UIComponentsCore`에 `package`로 둬요. 공개 API가 아니고, 같은 패키지의 테스트 타깃에서 `@testable` 없이 검증돼요. 자세한 기준은 [API 설계 규칙](api-design.md#공개-범위를-최소로-유지해요)에 있어요.
 - UI 타깃은 `Algorithm`, `SwiftExtension`에도 의존할 수 있어요. 코어 모듈이 UI 타깃에 의존하지 않아요.
 - `Labs`는 어떤 타깃도 의존하지 않아요. 실험이 끝나면 코드를 코어 모듈로 옮겨요.
 - 순환 의존이 필요해 보이면 타입의 위치나 책임을 잘못 나눈 신호예요. 공통 부분을 아래 계층으로 내려요.

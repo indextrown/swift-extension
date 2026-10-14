@@ -15,8 +15,8 @@ SwiftExtensionDemo/
 │   ├── BottomSheetDemoView.swift        UITabBarController를 컨테이너로 감싼 화면. 불투명·유리 탭바 토글
 │   ├── BottomSheetHostViewController    MKMapView 위에 시트를 붙이는 UIKit 화면. Locate 버튼은 sheet.view.topAnchor에 묶임
 │   ├── MapHostViewModel                 UIKit 화면의 ViewModel. 위치 권한·현재 위치를 클로저로 알림
-│   ├── PlaceListViewController          시트 안 콘텐츠 (UITableView 40행)
-│   ├── SwiftUIBottomSheetDemoScreen     SwiftUI 버전. Map 위 TabView 탭 콘텐츠에 bottomSheet(detent:) 적용
+│   ├── PlaceListViewController          시트 안 콘텐츠 (UITableView 40행). 같은 파일에 목록 두 개를 넣은 `목록 여러 개 시트` UIKit 화면
+│   ├── SwiftUIBottomSheetDemoScreen     SwiftUI 버전. Map 위 TabView 탭 콘텐츠에 bottomSheet(detent:) 적용. 같은 파일에 `목록 여러 개 시트` SwiftUI 화면
 │   ├── MapDemoViewModel                 SwiftUI 화면의 ViewModel. @Observable로 위치를 알림
 │   ├── NativeSheetDemoView              비교용. 같은 탭바 구성에서 애플 UISheetPresentationController를 띄움
 │   ├── SwiftUINativeSheetDemoScreen     비교용. 같은 TabView 구성에서 애플 .sheet + presentationDetents를 띄움
@@ -30,7 +30,7 @@ SwiftExtensionDemo/
     └── ComponentSwiftUIDemoScreen       같은 컴포넌트를 ScrollView 안에 그대로 넣은 SwiftUI 화면
 ```
 
-목록은 `UIKitExtension`·`SwiftUIExtension` 섹션에 각각 세 행이에요. 첫 행이 이 패키지의 커스텀 시트, 둘째 행이 같은 단계(96pt·medium·large)로 맞춘 애플 기본 시트, 셋째 행이 콘텐츠 높이만큼만 올라오는 `.content` 단계 데모예요.
+목록은 `UIKitExtension`·`SwiftUIExtension` 섹션에 각각 네 행이에요. 첫 행이 이 패키지의 커스텀 시트, 둘째 행이 같은 단계(96pt·medium·large)로 맞춘 애플 기본 시트, 셋째 행이 콘텐츠 높이만큼만 올라오는 `.content` 단계 데모, 넷째 행이 손잡이 줄과 빈 곳으로만 끄는 `dragArea: .handleAndBackground` 데모예요.
 
 | | 커스텀 시트 (`탭바 뒤 바텀시트`) | 애플 기본 시트 (`애플 기본 시트`) |
 | --- | --- | --- |
@@ -41,6 +41,10 @@ SwiftExtensionDemo/
 애플 기본 시트 화면은 열리면 기본 탭바가 먼저 보여요. `시트 열기`를 누르면 시트가 탭바를 덮어요.
 
 `콘텐츠 높이 시트`는 스크롤이 필요 없는 상태 카드 두 장을 시트에 넣고 `.content(padding:)` 단계 하나로 띄워요. 시트가 카드 높이를 재서 아래 여백 없이 딱 맞게 올라와요. 오른쪽 위 `⋯` 메뉴의 `카드 3장`을 켜면 시트가 다시 재서 스프링으로 커지고(UIKit은 `invalidateContentHeight()`, SwiftUI는 다시 그리면서 저절로), `아래 여백`을 바꾸면 `.content(padding:)`이 바뀐 레이아웃으로 자리를 다시 잡아요. 상태 라벨의 `visible`이 탭바 위에 보이는 높이예요.
+
+`목록 여러 개 시트`는 제목줄(`지역 선택`, `초기화` 버튼) 아래에 시도 목록과 구 목록을 나란히 넣은 시트예요. 일반 `List`(UIKit은 따라가지 않는 `UITableView`) 두 개라 시트가 스크롤을 따라갈 수 없는 화면이고, `dragArea: .handleAndBackground`로 시작해요. 목록을 위아래로 끌면 목록만 스크롤되고, 손잡이 줄과 빈 곳(목록 옆 여백, 제목 옆 빈 곳)을 끌어야 단계가 바뀌어요. 제목 글자 위도 빈 배경이라 끌리고, `초기화` 버튼 위에서 끌면 시트가 움직이지 않아요. 두 판이 같아요.
+
+오른쪽 위 `⋯` 메뉴에서 두 가지를 바꿔요. `제목줄도 끌어요`를 켜면 제목줄이 끌기 손잡이가 돼요(UIKit `isBottomSheetDragHandle`, SwiftUI `bottomSheetDragHandle(_:)`). 이 제목줄은 글자와 빈 곳뿐이라 켜기 전에도 끌리고, 버튼은 켠 뒤에도 자기 터치를 지켜요. 손잡이 지정은 탭 제스처가 달린 줄처럼 그 자체가 터치를 받는 제목줄에 써요. `손잡이·빈 곳으로만 끌어요`를 끄면 `.entireSheet`로 바뀌어요. 이때 SwiftUI 판은 목록을 끌 때 스크롤과 시트가 함께 움직이고, UIKit 판은 목록 팬이 이겨 목록만 스크롤돼요(iOS 27 시뮬레이터 기준). 상태 줄이 현재 단계, `dragArea`, 제목줄 지정 여부를 보여 줘요.
 
 `UIKitComponents` 섹션에는 두 행이 있어요. `UIKit에서 쓰기`와 `SwiftUI에서 쓰기`는 같은 `NoticeComponent`·`ToggleRowComponent`를 각각 UIKit과 SwiftUI에 넣어요. 위쪽 `짧게`·`길게`를 바꾸면 두 화면 모두 뷰를 새로 만들지 않고 글 길이에 맞춰 높이를 다시 재요. SwiftUI 화면에는 `.frame(height:)`가 하나도 없어요. 스위치를 누르면 UIKit은 `update(_:)`로, SwiftUI는 `@State`로 제목이 바뀌어요.
 
@@ -103,6 +107,6 @@ xcrun simctl location booted set 37.5665,126.9780
 
 - `tip` 단계에서 시트 본체가 탭바 뒤로 이어지고 탭바는 그대로 눌려요.
 - 손잡이를 위로 플릭하면 `full`, 리스트를 밀면 콘텐츠가 스크롤되고, 맨 위에서 계속 끌면 시트가 이어서 내려와요.
-- 오른쪽 위 `⋯` 메뉴의 `불투명 탭바` 토글로 벽(불투명)과 유리창(기본 Liquid Glass)을, `스크롤이 시트를 올려요` 토글로 목록 스크롤이 시트를 먼저 올릴지(Apple 지도 방식)를 바꿔 가며 비교할 수 있어요. 데모는 끈 상태로 시작해요.
+- 오른쪽 위 `⋯` 메뉴의 `불투명 탭바` 토글로 벽(불투명)과 유리창(기본 Liquid Glass)을, `스크롤이 시트를 올려요` 토글로 목록 스크롤이 시트를 먼저 올릴지(Apple 지도 방식)를 바꿔 가며 비교할 수 있어요. 데모는 끈 상태로 시작해요. `손잡이·빈 곳으로만 끌어요`를 켜면 목록은 스크롤만 하고 시트는 손잡이 줄과 빈 곳으로만 움직여요.
 - 상단 두 줄이 현재 단계, 도착 offset, 현재 offset, 가용 높이를 보여 줘요.
 - `SwiftUIExtension` 섹션의 같은 이름 행은 SwiftUI 버전이에요. `TabView` 탭 콘텐츠에 `bottomSheet(detent:)`를 얹었고, 콘텐츠는 `BottomSheetScrollView`라 맨 위에서 아래로 끌면 시트로 넘어와요.

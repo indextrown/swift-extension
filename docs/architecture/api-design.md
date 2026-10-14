@@ -20,6 +20,8 @@
 - 저장 프로퍼티는 공개하지 않아요. 내부 표현을 바꿀 여지를 남기기 위해 읽기 전용 연산 프로퍼티나 메서드로 노출해요.
 - 클래스를 공개할 때는 상속을 열 이유가 없으면 `public final class`로 적어요. `open`은 상속을 전제로 설계한 타입에만 써요.
 - 타입 전체를 공개하기 전에 "이 타입을 쓰는 쪽이 무엇을 할 수 있어야 하는가"를 먼저 적어요. 그 목록에 없는 멤버는 공개하지 않아요.
+- 패키지 안의 다른 타깃만 쓰는 선언은 `public` 대신 `package`로 둬요. 예를 들어 `UIComponentsCore`의 바텀시트 끌기 판단(`BottomSheetDragRouting.swift`)은 UIKit·SwiftUI 타깃만 쓰므로 `package`예요. 패키지 밖에는 보이지 않아 공개 API가 아니고, 같은 패키지의 테스트 타깃에서 `@testable` 없이 검증돼요. 공개 타입이 값을 구분하는 표현(`BottomSheetDragArea.kind`)도 같은 이유로 `package`예요.
+- UI 타깃 하나만 쓰더라도 UIKit·SwiftUI 없이 계산되는 판단은 macOS CI에서 검증하려고 `UIComponentsCore`에 `package`로 둘 수 있어요. 예: UIKit `static`의 콘텐츠 바닥 기준(`BottomSheetContentBottom.swift`).
 
 ```swift
 // Preferred: 내부 표현은 감추고 필요한 동작만 공개해요.

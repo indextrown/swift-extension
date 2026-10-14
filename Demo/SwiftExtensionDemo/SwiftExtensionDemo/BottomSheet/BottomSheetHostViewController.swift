@@ -43,6 +43,12 @@ final class BottomSheetHostViewController: UIViewController {
         set { self.sheet.behavior.scrollingExpandsSheet = newValue }
     }
 
+    /// 손가락으로 시트를 끌 수 있는 영역입니다. 데모 툴바의 토글이 바꿔 줍니다.
+    var dragArea: BottomSheetDragArea {
+        get { self.sheet.behavior.dragArea }
+        set { self.sheet.behavior.dragArea = newValue }
+    }
+
     /// 처음 받은 위치로 지도를 한 번만 옮기기 위한 표시입니다.
     private var hasCenteredOnUser = false
 

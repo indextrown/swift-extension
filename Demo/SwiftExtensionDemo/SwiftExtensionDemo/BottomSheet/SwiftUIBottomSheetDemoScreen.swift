@@ -23,6 +23,9 @@ struct SwiftUIBottomSheetDemoScreen: View {
     /// 시트 안의 목록을 위로 끌 때 시트가 먼저 올라갈지(Apple 지도 방식), 목록만 스크롤될지 정합니다.
     @State private var scrollingExpandsSheet = false
 
+    /// 손잡이 줄과 빈 곳으로만 시트를 끌지 정합니다. 켜면 목록을 어떻게 끌어도 시트는 그대로예요.
+    @State private var dragsWithHandleAndBackground = false
+
     /// 시트 위치예요. `onOffsetChange`가 시트가 움직이는 매 프레임 채워 줍니다.
     @State private var sheetOffset: CGFloat?
 
@@ -45,6 +48,7 @@ struct SwiftUIBottomSheetDemoScreen: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Toggle("스크롤이 시트를 올려요", isOn: self.$scrollingExpandsSheet)
+                    Toggle("손잡이·빈 곳으로만 끌어요", isOn: self.$dragsWithHandleAndBackground)
                 } label: {
                     Label("옵션", systemImage: "ellipsis.circle")
                 }
@@ -113,7 +117,10 @@ struct SwiftUIBottomSheetDemoScreen: View {
         .bottomSheet(
             detent: self.$detent,
             layout: Self.layout,
-            behavior: BottomSheetBehavior(scrollingExpandsSheet: self.scrollingExpandsSheet),
+            behavior: BottomSheetBehavior(
+                scrollingExpandsSheet: self.scrollingExpandsSheet,
+                dragArea: self.dragsWithHandleAndBackground ? .handleAndBackground : .entireSheet
+            ),
             onOffsetChange: { self.sheetOffset = $0 }
         ) {
             BottomSheetScrollView {
@@ -153,5 +160,101 @@ struct SwiftUIBottomSheetDemoScreen: View {
 
     private var status: String {
         return "detent=\(self.detent.rawValue)  offset=\(self.sheetOffset.map { String(Int($0)) } ?? "-")\n\(self.viewModel.message)"
+    }
+}
+
+
+
+// MARK: - Nested Lists
+
+/// 시트 안에 일반 `List` 두 개를 나란히 둔 화면입니다. 지역 선택처럼 목록이 여러 개인 시트를 흉내 냅니다.
+///
+/// `List`는 `BottomSheetScrollView`로 감쌀 수 없어서, 시트 어디서나 끌면(`.entireSheet`) 목록을 스크롤할 때
+/// 시트가 함께 끌려요. 오른쪽 위 메뉴로 `.handleAndBackground`를 켜면 손잡이 줄과 빈 곳(좌우 여백, 제목 옆 빈 곳)으로만
+/// 시트가 움직이고 목록은 스크롤만 해요. `제목줄도 끌어요`는 `bottomSheetDragHandle(_:)`을 켜고 꺼요. 버튼은 켜도 자기 터치를 지켜요.
+struct SwiftUINestedListSheetDemoScreen: View {
+
+    private static let provinces = ["서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+
+    @State private var detent: BottomSheetDetent.Identifier = .half
+    @State private var dragsWithHandleAndBackground = true
+    @State private var isHeaderDraggable = false
+    @State private var province = "서울"
+    @State private var district: Int?
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Color(.secondarySystemBackground)
+                .ignoresSafeArea()
+
+            Text(self.status)
+                .font(.system(.footnote, design: .monospaced))
+                .padding(16)
+                .accessibilityIdentifier("nested-status")
+        }
+        .bottomSheet(
+            detent: self.$detent,
+            layout: .standard,
+            style: BottomSheetStyle(handleAreaHeight: 36),
+            behavior: BottomSheetBehavior(dragArea: self.dragsWithHandleAndBackground ? .handleAndBackground : .entireSheet)
+        ) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("지역 선택")
+                        .font(.headline)
+
+                    Spacer()
+
+                    Button("초기화") {
+                        self.province = "서울"
+                        self.district = nil
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+                .bottomSheetDragHandle(self.isHeaderDraggable)
+
+                HStack(spacing: 0) {
+                    List(Self.provinces, id: \.self) { name in
+                        Button(name) {
+                            self.province = name
+                            self.district = nil
+                        }
+                        .foregroundStyle(name == self.province ? Color.accentColor : Color.primary)
+                    }
+                    .listStyle(.plain)
+                    .accessibilityIdentifier("province-list")
+
+                    List(0..<30, id: \.self) { index in
+                        Button("\(self.province) \(index + 1)구") {
+                            self.district = index
+                        }
+                        .foregroundStyle(index == self.district ? Color.accentColor : Color.primary)
+                    }
+                    .listStyle(.plain)
+                    .accessibilityIdentifier("district-list")
+                }
+                /// 좌우 여백은 빈 곳이라 손잡이·빈 곳으로만 끌 때도 시트가 움직여요.
+                .padding(.horizontal, 16)
+            }
+        }
+        .navigationTitle("목록 여러 개 시트 (SwiftUI)")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Toggle("손잡이·빈 곳으로만 끌어요", isOn: self.$dragsWithHandleAndBackground)
+                    Toggle("제목줄도 끌어요", isOn: self.$isHeaderDraggable)
+                } label: {
+                    Label("옵션", systemImage: "ellipsis.circle")
+                }
+            }
+        }
+    }
+
+    private var status: String {
+        let area = self.dragsWithHandleAndBackground ? "handleAndBackground" : "entireSheet"
+
+        return "detent=\(self.detent.rawValue)  dragArea=\(area)  header=\(self.isHeaderDraggable ? "on" : "off")"
     }
 }
