@@ -492,7 +492,7 @@ SwiftUI 판은 `fitToBounds`만 있어요. `LazyVStack` 재배치가 가벼워�
 | `bottomSheetWillBeginDragging` | 손가락이 시트를 끌기 시작할 때 | 진행 중인 다른 애니메이션 정리 |
 | `bottomSheet(_:didMoveTo:)` | 끄는 동안 위치가 바뀔 때마다 | 지도 카메라 여백처럼 시트 높이를 따라가는 값 |
 | `bottomSheet(_:willEndDraggingWithVelocity:targetDetent:)` | 손을 뗀 직후, 도착 단계가 계산된 뒤 | `targetDetent`를 바꿔 다른 단계로 보내기 |
-| `bottomSheet(_:didChangeDetent:)` | 도착 단계가 정해졐을 때 | 단계별 UI 갱신. 애니메이션 시작 시점이라 같은 길이로 함께 움직일 수 있어요 |
+| `bottomSheet(_:didChangeDetent:)` | 도착 단계가 정해졌을 때 | 단계별 UI 갱신. 애니메이션 시작 시점이라 같은 길이로 함께 움직일 수 있어요 |
 | `bottomSheet(_:didChangeCoveredHeight:animated:)` | 끄는 동안 매 프레임(`animated: false`), 도착값이 정해질 때 한 번(`animated: true`), 처음 자리 잡을 때 한 번 | 지도 여백처럼 **시트가 가린 높이 하나에 묶이는 값**. 위 두 메서드를 합친 편의 콜백이에요 |
 
 `didMoveTo`는 손으로 끄는 동안만 와요. 손을 뗀 뒤의 애니메이션 중에는 오지 않아요. 지도 여백처럼 시트가 가린 높이 하나에 묶이는 값은 `didChangeCoveredHeight`를 쓰면 끄는 동안과 도착 시점을 한 메서드로 받아요.
@@ -549,6 +549,17 @@ struct MapScreen: View {
   - 이렇게 한 이유: 도착값만 애니메이션 블록 안에서 넘기면 순수 SwiftUI View는 나란히 움직이지만, `Map`처럼 UIKit이 그리는 View는 안전 영역의 중간값을 보간하지 못해 손을 뗀 순간 엉뚱한 위치로 튀고 애니메이션이 끝날 때 다시 튀어요(데모에서 화면 녹화로 확인). 내부에서는 `Animatable` 모디파이어가 애니메이션 중간값을 `PreferenceKey`로 올려 보내요.
 - 손잡이는 VoiceOver `adjustable` 요소이고, 동작 줄이기가 켜져 있으면 스프링 대신 완만한 곡선을 써요.
 - 시트를 따라가는 지도 여백과 버튼은 `bottomSheetInset()`·`bottomSheetDock`으로 붙여요. [도크](#시트-위에-떠-있는-컨트롤-도크) 절에 있어요.
+- 손을 뗄 때 도착 단계를 바꾸려면 `willEndDragging`을 넘겨요. 손을 뗀 속도(pt/s, 아래가 양수)와 계산된 단계 이름을 받아, 실제로 갈 단계 이름을 돌려줘요. UIKit 대리자의 `willEndDragging`과 같은 규칙이라, 레이아웃에 없는 이름을 돌려주면 무시해요.
+
+```swift
+.bottomSheet(
+    detent: $detent,
+    layout: .dismissible,
+    willEndDragging: { velocity, proposed in
+        proposed == .hidden ? .tip : proposed   // 빠르게 내려도 tip에서 멈춰요
+    }
+) { PlaceList() }
+```
 
 UIKit 판과 다른 점이에요.
 
@@ -563,6 +574,7 @@ UIKit 판과 다른 점이에요.
 | 끌기 출발지 판정 | 손가락이 닿는 순간 터치를 받은 View로 손잡이·빈 배경·따라가는 스크롤뷰·콘텐츠를 구분해요 | 손잡이·배경·콘텐츠·지정 View 제스처로 구분해요. 콘텐츠 안의 위치는 몰라서, `BottomSheetScrollView`가 있으면 콘텐츠 제스처의 끌기는 그 위로 봐요 |
 | 콘텐츠 아래 안전 영역 | `static`은 시트가 콘텐츠 화면의 `additionalSafeAreaInsets.bottom`을 맞춰요 | `fitToBounds`만 있어 맞출 일이 없어요 |
 | 시트 → 스크롤 (가장 높은 단계 너머로 밀 때) | 스크롤로 넘겨요 | 넘기지 않고 저항만 줘요. 손을 떼면 가장 높은 단계에 멈추고 그 뒤에 스크롤이 돼요 |
+| 손을 뗄 때 도착 단계 바꾸기 | 대리자 `bottomSheet(_:willEndDraggingWithVelocity:targetDetent:)` | `willEndDragging` 인자. 두 판이 `UIComponentsCore`의 같은 규칙을 써요 |
 | 위치 읽기 | `currentOffset`, `availableHeight`, `offset(for:)` | `onOffsetChange`가 움직이는 매 프레임 offset을 줘요. 높이가 필요하면 `GeometryReader`로 부모 안전 영역 높이를 재요 |
 | 시트를 따라가는 UIKit 뷰 | `didChangeCoveredHeight(animated:)`로 도착값을 받아 UIView 애니메이션을 나란히 걸어요 | `onOffsetChange`의 프레임별 값을 그대로 넣어요. 애니메이션을 걸지 않아요 |
 
