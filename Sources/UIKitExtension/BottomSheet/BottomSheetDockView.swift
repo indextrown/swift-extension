@@ -58,6 +58,8 @@ public final class BottomSheetDockView: UIStackView {
     /// 항목이 보일 단계를 정합니다. 기본값은 `always`예요.
     ///
     /// 컨트롤러에 붙어 있으면 시트가 머무는 단계가 바뀔 때마다 반영돼요. 붙기 전에 정해 두면 붙을 때 반영됩니다.
+    /// 규칙을 정한 항목은 도크가 `isHidden`과 `alpha`를 맡아요. 규칙을 정하지 않은 항목은 앱이 직접 숨겨도
+    /// 도크가 건드리지 않아요.
     ///
     /// - Parameters:
     ///   - visibility: 표시 규칙입니다.
@@ -83,7 +85,10 @@ public final class BottomSheetDockView: UIStackView {
     /// - Complexity: O(n)입니다. n은 항목 개수입니다.
     public func update(for detent: BottomSheetDetent.Identifier, animated: Bool) {
         let changes = self.arrangedSubviews.compactMap { view -> (UIView, Bool)? in
-            let visible = self.visibility(for: view).isVisible(at: detent)
+            /// 규칙을 정한 항목만 맡아요. 앱이 직접 숨긴 항목을 시트가 다시 보이게 하지 않습니다.
+            guard let visibility = self.visibilities[view] else { return nil }
+
+            let visible = visibility.isVisible(at: detent)
 
             return view.isHidden == !visible ? nil : (view, visible)
         }

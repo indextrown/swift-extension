@@ -1209,4 +1209,22 @@ func reattachingDockReplacesConstraints() {
     #expect(anchored.count == 2)
     #expect(abs(dock.frame.minX - (fixture.sheet.uncoveredLayoutGuide.layoutFrame.minX + 20)) <= 0.5)
 }
+@Test("도크는 규칙을 정한 항목만 숨기고, 앱이 직접 숨긴 항목은 건드리지 않아요") @MainActor
+func dockLeavesAppHiddenItemsAlone() {
+    let fixture = SheetFixture(layout: .dismissible, initialDetent: .tip)
+    let managed = UIView()
+    let appOwned = UIView()
+    let dock = BottomSheetDockView(arrangedSubviews: [managed, appOwned])
+    dock.setVisibility(.whenHidden, for: managed)
+    appOwned.isHidden = true
+
+    fixture.sheet.attachDock(dock)
+    #expect(managed.isHidden)
+    #expect(appOwned.isHidden)
+
+    fixture.sheet.move(to: .hidden, animated: false)
+    dock.update(for: .hidden, animated: false)
+    #expect(managed.isHidden == false)
+    #expect(appOwned.isHidden)
+}
 #endif
